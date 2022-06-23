@@ -1144,7 +1144,9 @@ namespace Cnp.Sdk
         private async Task<cnpOnlineResponse> SendToCnpAsync(cnpOnlineRequest request, CancellationToken cancellationToken)
         {
             string xmlRequest = request.Serialize();
+            _logger.LogDebug($"Request: {xmlRequest}");
             string xmlResponse = await _communications.HttpPostAsync(xmlRequest, cancellationToken).ConfigureAwait(false);
+            _logger.LogDebug($"Resonse: {xmlResponse}");
             return DeserializeResponse(xmlResponse);
         }
 
