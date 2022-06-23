@@ -8,14 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Compile Remove="Certification\TestCert1Base.cs" />
-      <Compile Remove="Certification\TestCert2AuthEnhanced.cs" />
-      <Compile Remove="Certification\TestCert3AuthReversal.cs" />
-      <Compile Remove="Certification\TestCert4Echeck.cs" />
-      <Compile Remove="Certification\TestCert5Token.cs" />
-    </ItemGroup>
-
-    <ItemGroup>
+      <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="3.1.26" />
       <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.4.0" />
       <PackageReference Include="Moq" Version="4.13.1" />
       <PackageReference Include="NUnit" Version="3.12.0" />
@@ -24,10 +17,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\CnpSdkForNet\CnpSdkForNet.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Certification\" />
     </ItemGroup>
 
     <Target Name="CopyCustomContent" AfterTargets="AfterBuild">

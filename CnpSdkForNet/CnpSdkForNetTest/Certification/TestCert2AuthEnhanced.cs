@@ -1,4 +1,7 @@
 ﻿using System.Collections.Generic;
+using System.Net.Http;
+using Cnp.Sdk.Interfaces;
+using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 
 namespace Cnp.Sdk.Test.Certification
@@ -8,6 +11,8 @@ namespace Cnp.Sdk.Test.Certification
     {
 
         private CnpOnline cnp;
+        private ILogger<CnpOnline> _logger;
+        private ICommunications _communications;
 
         [OneTimeSetUp]
         public void SetUp()
@@ -29,14 +34,21 @@ namespace Cnp.Sdk.Test.Certification
             config.Add("proxyPort", "");
             
             ConfigManager configManager = new ConfigManager(config);
-            cnp = new CnpOnline(configManager.getConfig());
+            _communications = new Communications(new HttpClient(), configManager.getConfig());
+
+            _logger = LoggerFactory.Create(config =>
+            {
+                config.AddConsole();
+            }).CreateLogger<CnpOnline>();
+
+            cnp = new CnpOnline(_communications, configManager.getConfig(), _logger);
         }
 
-        [OneTimeTearDown]
-        public void Dispose()
-        {
-            Communications.DisposeHttpClient();
-        }
+        //[OneTimeTearDown]
+        //public void Dispose()
+        //{
+        //    Communications.DisposeHttpClient();
+        //}
 
         [Test]
         public void Test14()
