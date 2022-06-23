@@ -2,20 +2,25 @@
 using NUnit.Framework;
 using Moq;
 using System.Text.RegularExpressions;
-
+using Microsoft.Extensions.Logging;
+using Cnp.Sdk.Interfaces;
 
 namespace Cnp.Sdk.Test.Unit
 {
     [TestFixture]
     class TestAuthorization
     {
-
-        private CnpOnline cnp;
+        private CnpOnline _cnp;
+        private Mock<ILogger> _mockLogger;
+        private Mock<ICommunications> _mockCommunications;
 
         [OneTimeSetUp]
         public void SetUpCnp()
         {
-            cnp = new CnpOnline();
+            _mockLogger = new Mock<ILogger>();
+            _mockCommunications = new Mock<ICommunications>();
+
+            _cnp = new CnpOnline(_mockCommunications.Object, _mockLogger.Object);
         }
 
         [Test]
@@ -28,14 +33,10 @@ namespace Cnp.Sdk.Test.Unit
             auth.reportGroup = "Planets";
             auth.fraudFilterOverride = true;
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<fraudFilterOverride>true</fraudFilterOverride>.*", RegexOptions.Singleline) ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<fraudFilterOverride>true</fraudFilterOverride>.*", RegexOptions.Singleline) ))
                 .Returns("<cnpOnlineResponse version='8.10' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><authorizationResponse><cnpTxnId>123</cnpTxnId></authorizationResponse></cnpOnlineResponse>");
 
-            var mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var authorizationResponse = cnp.Authorize(auth);
+            var authorizationResponse = _cnp.Authorize(auth);
 
             Assert.NotNull(authorizationResponse);
             Assert.AreEqual(123, authorizationResponse.cnpTxnId);
@@ -54,14 +55,10 @@ namespace Cnp.Sdk.Test.Unit
             billToAddress.zip = "12345";
             auth.billToAddress = billToAddress;
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<zip>12345</zip>.*<email>gdake@cnp.com</email>.*", RegexOptions.Singleline) ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<zip>12345</zip>.*<email>gdake@cnp.com</email>.*", RegexOptions.Singleline) ))
                 .Returns("<cnpOnlineResponse version='8.14' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><authorizationResponse><cnpTxnId>123</cnpTxnId></authorizationResponse></cnpOnlineResponse>");
 
-            var mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var authorizationResponse = cnp.Authorize(auth);
+            var authorizationResponse = _cnp.Authorize(auth);
 
             Assert.NotNull(authorizationResponse);
             Assert.AreEqual(123, authorizationResponse.cnpTxnId);
@@ -80,14 +77,10 @@ namespace Cnp.Sdk.Test.Unit
             billToAddress.zip = "12345";
             auth.billToAddress = billToAddress;
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>.*<orderSource>3dsAttempted</orderSource>.*", RegexOptions.Singleline) ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>.*<orderSource>3dsAttempted</orderSource>.*", RegexOptions.Singleline) ))
                 .Returns("<cnpOnlineResponse version='8.14' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><authorizationResponse><cnpTxnId>123</cnpTxnId></authorizationResponse></cnpOnlineResponse>");
 
-            var mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var authorizationResponse = cnp.Authorize(auth);
+            var authorizationResponse = _cnp.Authorize(auth);
 
             Assert.NotNull(authorizationResponse);
             Assert.AreEqual(123, authorizationResponse.cnpTxnId);
@@ -106,14 +99,10 @@ namespace Cnp.Sdk.Test.Unit
             billToAddress.zip = "12345";
             auth.billToAddress = billToAddress;
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>.*<orderSource>3dsAuthenticated</orderSource>.*", RegexOptions.Singleline) ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>.*<orderSource>3dsAuthenticated</orderSource>.*", RegexOptions.Singleline) ))
                 .Returns("<cnpOnlineResponse version='8.14' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><authorizationResponse><cnpTxnId>123</cnpTxnId></authorizationResponse></cnpOnlineResponse>");
 
-            var mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var authorizationResponse = cnp.Authorize(auth);
+            var authorizationResponse = _cnp.Authorize(auth);
 
             Assert.NotNull(authorizationResponse);
             Assert.AreEqual(123, authorizationResponse.cnpTxnId);
@@ -129,14 +118,10 @@ namespace Cnp.Sdk.Test.Unit
             auth.orderSource = orderSourceType.ecommerce;
             auth.reportGroup = "Planets";
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>\r\n<secondaryAmount>1</secondaryAmount>\r\n<orderSource>ecommerce</orderSource>.*", RegexOptions.Singleline) ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>\r\n<secondaryAmount>1</secondaryAmount>\r\n<orderSource>ecommerce</orderSource>.*", RegexOptions.Singleline) ))
                 .Returns("<cnpOnlineResponse version='8.14' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><authorizationResponse><cnpTxnId>123</cnpTxnId></authorizationResponse></cnpOnlineResponse>");
 
-            var mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var authorizationResponse = cnp.Authorize(auth);
+            var authorizationResponse = _cnp.Authorize(auth);
 
             Assert.NotNull(authorizationResponse);
             Assert.AreEqual(123, authorizationResponse.cnpTxnId);
@@ -152,14 +137,10 @@ namespace Cnp.Sdk.Test.Unit
             auth.orderSource = orderSourceType.ecommerce;
             auth.reportGroup = "Planets";
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>\r\n<surchargeAmount>1</surchargeAmount>\r\n<orderSource>ecommerce</orderSource>.*", RegexOptions.Singleline)))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>\r\n<surchargeAmount>1</surchargeAmount>\r\n<orderSource>ecommerce</orderSource>.*", RegexOptions.Singleline)))
                 .Returns("<cnpOnlineResponse version='8.14' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><authorizationResponse><cnpTxnId>123</cnpTxnId></authorizationResponse></cnpOnlineResponse>");
 
-            var mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var authorizationResponse = cnp.Authorize(auth);
+            var authorizationResponse = _cnp.Authorize(auth);
 
             Assert.NotNull(authorizationResponse);
             Assert.AreEqual(123, authorizationResponse.cnpTxnId);
@@ -174,14 +155,10 @@ namespace Cnp.Sdk.Test.Unit
             auth.orderSource = orderSourceType.ecommerce;
             auth.reportGroup = "Planets";
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>\r\n<orderSource>ecommerce</orderSource>.*", RegexOptions.Singleline)))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>\r\n<orderSource>ecommerce</orderSource>.*", RegexOptions.Singleline)))
                 .Returns("<cnpOnlineResponse version='8.14' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><authorizationResponse><cnpTxnId>123</cnpTxnId></authorizationResponse></cnpOnlineResponse>");
 
-            var mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var authorizationResponse = cnp.Authorize(auth);
+            var authorizationResponse = _cnp.Authorize(auth);
 
             Assert.NotNull(authorizationResponse);
             Assert.AreEqual(123, authorizationResponse.cnpTxnId);
@@ -201,14 +178,10 @@ namespace Cnp.Sdk.Test.Unit
             card.expDate = "1210";
             auth.card = card;
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<card>\r\n<type>GC</type>\r\n<number>414100000000000000</number>\r\n<expDate>1210</expDate>\r\n</card>.*", RegexOptions.Singleline) ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<card>\r\n<type>GC</type>\r\n<number>414100000000000000</number>\r\n<expDate>1210</expDate>\r\n</card>.*", RegexOptions.Singleline) ))
                 .Returns("<cnpOnlineResponse version='8.10' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><authorizationResponse><cnpTxnId>123</cnpTxnId></authorizationResponse></cnpOnlineResponse>");
 
-            var mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var authorizationResponse = cnp.Authorize(auth);
+            var authorizationResponse = _cnp.Authorize(auth);
 
             Assert.NotNull(authorizationResponse);
             Assert.AreEqual(123, authorizationResponse.cnpTxnId);
@@ -238,14 +211,10 @@ namespace Cnp.Sdk.Test.Unit
             wallet.walletSourceTypeId = "123";
             auth.wallet = wallet;
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*?<cnpOnlineRequest.*?<authorization.*?<orderSource>applepay</orderSource>.*?<applepay>.*?<data>user</data>.*?</applepay>.*?<wallet>.*?<walletSourceTypeId>123</walletSourceTypeId>.*?</wallet>.*?</authorization>.*?", RegexOptions.Singleline) ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*?<cnpOnlineRequest.*?<authorization.*?<orderSource>applepay</orderSource>.*?<applepay>.*?<data>user</data>.*?</applepay>.*?<wallet>.*?<walletSourceTypeId>123</walletSourceTypeId>.*?</wallet>.*?</authorization>.*?", RegexOptions.Singleline) ))
                 .Returns("<cnpOnlineResponse version='8.10' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><authorizationResponse><cnpTxnId>123</cnpTxnId></authorizationResponse></cnpOnlineResponse>");
 
-            var mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var authorizationResponse = cnp.Authorize(auth);
+            var authorizationResponse = _cnp.Authorize(auth);
 
             Assert.NotNull(authorizationResponse);
             Assert.AreEqual(123, authorizationResponse.cnpTxnId);
@@ -268,14 +237,10 @@ namespace Cnp.Sdk.Test.Unit
             auth.recurringRequest.subscription.planCode = "abc123";
             auth.recurringRequest.subscription.numberOfPayments = 12;
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<fraudFilterOverride>true</fraudFilterOverride>\r\n<recurringRequest>\r\n<subscription>\r\n<planCode>abc123</planCode>\r\n<numberOfPayments>12</numberOfPayments>\r\n</subscription>\r\n</recurringRequest>\r\n</authorization>.*", RegexOptions.Singleline) ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<fraudFilterOverride>true</fraudFilterOverride>\r\n<recurringRequest>\r\n<subscription>\r\n<planCode>abc123</planCode>\r\n<numberOfPayments>12</numberOfPayments>\r\n</subscription>\r\n</recurringRequest>\r\n</authorization>.*", RegexOptions.Singleline) ))
                 .Returns("<cnpOnlineResponse version='8.18' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><authorizationResponse><cnpTxnId>123</cnpTxnId></authorizationResponse></cnpOnlineResponse>");
 
-            var mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var authorizationResponse = cnp.Authorize(auth);
+            var authorizationResponse = _cnp.Authorize(auth);
 
             Assert.NotNull(authorizationResponse);
             Assert.AreEqual(123, authorizationResponse.cnpTxnId);
@@ -295,14 +260,10 @@ namespace Cnp.Sdk.Test.Unit
             auth.fraudFilterOverride = true;
             auth.debtRepayment = true;
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<fraudFilterOverride>true</fraudFilterOverride>\r\n<debtRepayment>true</debtRepayment>\r\n</authorization>.*", RegexOptions.Singleline) ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<fraudFilterOverride>true</fraudFilterOverride>\r\n<debtRepayment>true</debtRepayment>\r\n</authorization>.*", RegexOptions.Singleline) ))
                 .Returns("<cnpOnlineResponse version='8.14' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><authorizationResponse><cnpTxnId>123</cnpTxnId></authorizationResponse></cnpOnlineResponse>");
 
-            var mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var authorizationResponse = cnp.Authorize(auth);
+            var authorizationResponse = _cnp.Authorize(auth);
 
             Assert.NotNull(authorizationResponse);
             Assert.AreEqual(123, authorizationResponse.cnpTxnId);
@@ -370,15 +331,12 @@ namespace Cnp.Sdk.Test.Unit
 
             Assert.AreEqual(Regex.Replace(expectedResult, @"\s+", string.Empty), Regex.Replace(auth.Serialize(), @"\s+", string.Empty));
 
-            var mock = new Mock<Communications>();
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<authorization id=\".*>.*<customerIpAddress>192.168.1.1</customerIpAddress>.*</authorization>.*", RegexOptions.Singleline) ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<authorization id=\".*>.*<customerIpAddress>192.168.1.1</customerIpAddress>.*</authorization>.*", RegexOptions.Singleline) ))
                 .Returns("<cnpOnlineResponse version='8.14' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><authorizationResponse><cnpTxnId>123</cnpTxnId></authorizationResponse></cnpOnlineResponse>");
 
-            var mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            cnp.Authorize(auth);
+            _cnp.Authorize(auth);
 
-            var authorizationResponse = cnp.Authorize(auth);
+            var authorizationResponse = _cnp.Authorize(auth);
 
             Assert.NotNull(authorizationResponse);
             Assert.AreEqual(123, authorizationResponse.cnpTxnId);
@@ -417,15 +375,12 @@ namespace Cnp.Sdk.Test.Unit
 
             Assert.AreEqual(Regex.Replace(expectedResult, @"\s+", string.Empty), Regex.Replace(auth.Serialize(), @"\s+", string.Empty));
 
-            var mock = new Mock<Communications>();
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<authorization id=\".*>.*<billMeLaterRequest>\r\n<virtualAuthenticationKeyPresenceIndicator>Presence</virtualAuthenticationKeyPresenceIndicator>\r\n<virtualAuthenticationKeyData>Data</virtualAuthenticationKeyData>\r\n</billMeLaterRequest>.*</authorization>.*", RegexOptions.Singleline) ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<authorization id=\".*>.*<billMeLaterRequest>\r\n<virtualAuthenticationKeyPresenceIndicator>Presence</virtualAuthenticationKeyPresenceIndicator>\r\n<virtualAuthenticationKeyData>Data</virtualAuthenticationKeyData>\r\n</billMeLaterRequest>.*</authorization>.*", RegexOptions.Singleline) ))
                 .Returns("<cnpOnlineResponse version='8.14' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><authorizationResponse><cnpTxnId>123</cnpTxnId></authorizationResponse></cnpOnlineResponse>");
 
-            var mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            cnp.Authorize(auth);
+            _cnp.Authorize(auth);
 
-            var authorizationResponse = cnp.Authorize(auth);
+            var authorizationResponse = _cnp.Authorize(auth);
 
             Assert.NotNull(authorizationResponse);
             Assert.AreEqual(123, authorizationResponse.cnpTxnId);
@@ -462,13 +417,10 @@ namespace Cnp.Sdk.Test.Unit
             var test = auth.Serialize();
             Assert.AreEqual(Regex.Replace(expectedResult, @"\s+", string.Empty), Regex.Replace(auth.Serialize(), @"\s+", string.Empty));
 
-            var mock = new Mock<Communications>();
-            mock.Setup(Communications => Communications.HttpPost(It.IsAny<string>() ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsAny<string>() ))
                 .Returns("<cnpOnlineResponse version='8.23' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><authorizationResponse><orderId>123</orderId><fraudResult><advancedFraudResults><deviceReviewStatus>\"ReviewStatus\"</deviceReviewStatus><deviceReputationScore>800</deviceReputationScore></advancedFraudResults></fraudResult></authorizationResponse></cnpOnlineResponse>");
 
-            var mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var authorizationResponse = cnp.Authorize(auth);
+            var authorizationResponse = _cnp.Authorize(auth);
 
             Assert.NotNull(authorizationResponse);
             Assert.AreEqual("123", authorizationResponse.orderId);
@@ -526,13 +478,10 @@ namespace Cnp.Sdk.Test.Unit
 
             Assert.AreEqual(Regex.Replace(expectedResult, @"\s+", string.Empty), Regex.Replace(auth.Serialize(), @"\s+", string.Empty));
 
-            var mock = new Mock<Communications>();
-            mock.Setup(Communications => Communications.HttpPost(It.IsAny<string>() ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsAny<string>() ))
                 .Returns("<cnpOnlineResponse version='8.23' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><authorizationResponse><cnpTxnId>123</cnpTxnId></authorizationResponse></cnpOnlineResponse>");
 
-            var mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var authorizationResponse = cnp.Authorize(auth);
+            var authorizationResponse = _cnp.Authorize(auth);
 
             Assert.NotNull(authorizationResponse);
             Assert.AreEqual(123, authorizationResponse.cnpTxnId);
@@ -579,14 +528,10 @@ namespace Cnp.Sdk.Test.Unit
             auth.originalNetworkTransactionId = "123456789";
             auth.originalTransactionAmount = 12;
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*?<originalNetworkTransactionId>123456789</originalNetworkTransactionId>.*?<originalTransactionAmount>12</originalTransactionAmount>.*?", RegexOptions.Singleline) ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*?<originalNetworkTransactionId>123456789</originalNetworkTransactionId>.*?<originalTransactionAmount>12</originalTransactionAmount>.*?", RegexOptions.Singleline) ))
                 .Returns("<cnpOnlineResponse version='8.18' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><authorizationResponse><cnpTxnId>123</cnpTxnId></authorizationResponse></cnpOnlineResponse>");
 
-            var mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var authorizationResponse = cnp.Authorize(auth);
+            var authorizationResponse = _cnp.Authorize(auth);
             Assert.AreEqual(123, authorizationResponse.cnpTxnId);
         }
 
@@ -603,14 +548,10 @@ namespace Cnp.Sdk.Test.Unit
             card.pin = "1234";
             auth.card = card;
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<card>\r\n<type>MC</type>\r\n<number>414100000000000000</number>\r\n<expDate>1210</expDate>\r\n<pin>1234</pin>\r\n</card>.*", RegexOptions.Singleline) ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<card>\r\n<type>MC</type>\r\n<number>414100000000000000</number>\r\n<expDate>1210</expDate>\r\n<pin>1234</pin>\r\n</card>.*", RegexOptions.Singleline) ))
                .Returns("<cnpOnlineResponse version='8.10' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><authorizationResponse><cnpTxnId>123</cnpTxnId></authorizationResponse></cnpOnlineResponse>");
 
-            var mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var authorizationResponse = cnp.Authorize(auth);
+            var authorizationResponse = _cnp.Authorize(auth);
             Assert.AreEqual(123, authorizationResponse.cnpTxnId);
         }
 
@@ -624,14 +565,10 @@ namespace Cnp.Sdk.Test.Unit
             auth.orderSource = orderSourceType.ecommerce;
             auth.reportGroup = "Planets";
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>\r\n<orderSource>ecommerce</orderSource>\r\n<merchantCategoryCode>0111</merchantCategoryCode>.*", RegexOptions.Singleline)))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>\r\n<orderSource>ecommerce</orderSource>\r\n<merchantCategoryCode>0111</merchantCategoryCode>.*", RegexOptions.Singleline)))
                 .Returns("<cnpOnlineResponse version='8.14' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><authorizationResponse><cnpTxnId>123</cnpTxnId></authorizationResponse></cnpOnlineResponse>");
 
-            var mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var authorizationResponse = cnp.Authorize(auth);
+            var authorizationResponse = _cnp.Authorize(auth);
 
             Assert.NotNull(authorizationResponse);
             Assert.AreEqual(123, authorizationResponse.cnpTxnId);
@@ -647,14 +584,10 @@ namespace Cnp.Sdk.Test.Unit
             auth.orderSource = orderSourceType.ecommerce;
             auth.reportGroup = "Planets";
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>\r\n<secondaryAmount>1</secondaryAmount>\r\n<orderSource>ecommerce</orderSource>.*", RegexOptions.Singleline)))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>\r\n<secondaryAmount>1</secondaryAmount>\r\n<orderSource>ecommerce</orderSource>.*", RegexOptions.Singleline)))
                 .Returns("<cnpOnlineResponse version='8.14' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><authorizationResponse><cnpTxnId>123</cnpTxnId><location>sandbox</location></authorizationResponse></cnpOnlineResponse>");
 
-            var mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var authorizationResponse = cnp.Authorize(auth);
+            var authorizationResponse = _cnp.Authorize(auth);
 
             Assert.NotNull(authorizationResponse);
             Assert.AreEqual(123, authorizationResponse.cnpTxnId);
@@ -697,14 +630,10 @@ namespace Cnp.Sdk.Test.Unit
 
             auth.additionalCOFData = additionalCOFData;
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<zip>01867-4456</zip>.*<email>mikasa@cnp.com</email>.*<sellerId>s1234</sellerId>.*<url>www.google.com</url>.*<frequencyOfMIT>BiWeekly</frequencyOfMIT>.*<orderChannel>PHONE</orderChannel>\r\n<fraudCheckStatus>Not Approved</fraudCheckStatus>\r\n<crypto>false</crypto>.*", RegexOptions.Singleline)))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<zip>01867-4456</zip>.*<email>mikasa@cnp.com</email>.*<sellerId>s1234</sellerId>.*<url>www.google.com</url>.*<frequencyOfMIT>BiWeekly</frequencyOfMIT>.*<orderChannel>PHONE</orderChannel>\r\n<fraudCheckStatus>Not Approved</fraudCheckStatus>\r\n<crypto>false</crypto>.*", RegexOptions.Singleline)))
                 .Returns("<cnpOnlineResponse version='8.14' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><authorizationResponse><cnpTxnId>123</cnpTxnId></authorizationResponse></cnpOnlineResponse>");
 
-            var mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var authorizationResponse = cnp.Authorize(auth);
+            var authorizationResponse = _cnp.Authorize(auth);
 
             Assert.NotNull(authorizationResponse);
             Assert.AreEqual(123, authorizationResponse.cnpTxnId);

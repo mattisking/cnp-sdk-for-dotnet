@@ -1,19 +1,30 @@
 ﻿using System;
 using NUnit.Framework;
+using Microsoft.Extensions.Logging;
+using Moq;
+using Cnp.Sdk.Interfaces;
+using Cnp.Sdk.Core;
+using System.Net.Http;
 
 namespace Cnp.Sdk.Test.Functional
 {
     [TestFixture]
     class TestBatchRequest
     {
-        private cnpRequest cnp;
+        private cnpRequest _cnp;
+        private ICommunications _communications;
 
         [SetUp]
         public void setUpBeforeTest()
         {
             EnvironmentVariableTestFlags.RequirePreliveBatchTestsEnabled();
-            
-            cnp = new cnpRequest();
+
+            var configManager = new ConfigManager();
+            var config = configManager.getConfig();
+            var handler = new CommunicationsHttpClientHandler(config);
+            _communications = new Communications(new HttpClient(handler), config);
+
+            _cnp = new cnpRequest(_communications, config);
         }
 
         [Test]
@@ -392,13 +403,13 @@ namespace Cnp.Sdk.Test.Functional
 //            };
 //            cnpBatchRequest.addfastAccessFunding(fastAccessFunding);
             
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            var batchName = cnp.sendToCnp();
+            var batchName = _cnp.sendToCnp();
 
-            cnp.blockAndWaitForResponse(batchName, estimatedResponseTime(2 * 2, 10 * 2));
+            _cnp.blockAndWaitForResponse(batchName, estimatedResponseTime(2 * 2, 10 * 2));
 
-            var cnpResponse = cnp.receiveFromCnp(batchName);
+            var cnpResponse = _cnp.receiveFromCnp(batchName);
 
             Assert.NotNull(cnpResponse);
             Assert.AreEqual("0", cnpResponse.response);
@@ -577,13 +588,13 @@ namespace Cnp.Sdk.Test.Functional
             
             cnpBatchRequest.addfastAccessFunding(fastAccessFunding);
             
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            var batchName = cnp.sendToCnp();
+            var batchName = _cnp.sendToCnp();
 
-            cnp.blockAndWaitForResponse(batchName, estimatedResponseTime(0, 1));
+            _cnp.blockAndWaitForResponse(batchName, estimatedResponseTime(0, 1));
 
-            var cnpResponse = cnp.receiveFromCnp(batchName);
+            var cnpResponse = _cnp.receiveFromCnp(batchName);
 
             Assert.NotNull(cnpResponse);
             Assert.AreEqual("0", cnpResponse.response);

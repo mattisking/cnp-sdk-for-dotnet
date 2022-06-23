@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using NUnit.Framework;
+using Microsoft.Extensions.Logging;
+using Moq;
+using Cnp.Sdk.Interfaces;
 
 namespace Cnp.Sdk.Test.Functional
 {
@@ -67,6 +70,9 @@ namespace Cnp.Sdk.Test.Functional
 
         class PerformanceTest
         {
+            private Mock<ILogger> _mockLogger;
+            private Mock<ICommunications> _mockCommunications;
+
             CnpOnline cnp;
             long threadId;
             long requestCount = 0;
@@ -75,10 +81,14 @@ namespace Cnp.Sdk.Test.Functional
             public PerformanceTest(long idNumber)
             {
                 threadId = idNumber;
-                Dictionary<string, string> _config = new Dictionary<string, string>();
+                Dictionary<string, string> config = new Dictionary<string, string>();
+
+                _mockLogger = new Mock<ILogger>();
+                _mockCommunications = new Mock<ICommunications>();
+
                 try
                 {
-                    _config = new Dictionary<string, string>
+                    config = new Dictionary<string, string>
                     {
                         {"proxyHost","websenseproxy"},
                         {"proxyPort","8080"},
@@ -87,7 +97,7 @@ namespace Cnp.Sdk.Test.Functional
                         {"username", "DOTNET"},
                         {"password", "TESTCASE"}
                     };
-                    cnp = new CnpOnline(_config);
+                    cnp = new CnpOnline(_mockCommunications.Object, config, _mockLogger.Object);
                 }
                 catch (Exception e)
                 {

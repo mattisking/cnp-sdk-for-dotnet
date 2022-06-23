@@ -2,19 +2,35 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using NUnit.Framework;
+using Microsoft.Extensions.Logging;
+using Moq;
+using Cnp.Sdk.Interfaces;
+using Cnp.Sdk.Core;
+using System.Net.Http;
 
-
-namespace Cnp.Sdk.Test.Functional {
+namespace Cnp.Sdk.Test.Functional 
+{
 
     [TestFixture]
-    internal class TestPayoutOrg {
+    internal class TestPayoutOrg 
+    {
         private CnpOnline _cnp;
+        private Mock<ILogger> _mockLogger;
+        private ICommunications _communications;
 
         [OneTimeSetUp]
-        public void SetUpCnp() {
-            _cnp = new CnpOnline();
+        public void SetUpCnp() 
+        {
+            _mockLogger = new Mock<ILogger>();
+
+            var configManager = new ConfigManager();
+            var config = configManager.getConfig();
+            var handler = new CommunicationsHttpClientHandler(config);
+            _communications = new Communications(new HttpClient(handler), config);
+
+            _cnp = new CnpOnline(_communications, config, _mockLogger.Object);
         }
-        
+
         [Test]
         public void PayoutOrgCredit()
         {

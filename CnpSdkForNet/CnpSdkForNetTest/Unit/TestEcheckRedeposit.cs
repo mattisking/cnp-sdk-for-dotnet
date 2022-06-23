@@ -3,20 +3,25 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Moq;
 using System.Text.RegularExpressions;
-
+using Microsoft.Extensions.Logging;
+using Cnp.Sdk.Interfaces;
 
 namespace Cnp.Sdk.Test.Unit
 {
     [TestFixture]
     class TestEcheckRedeposit
     {
-        
-        private CnpOnline cnp;
+        private CnpOnline _cnp;
+        private Mock<ILogger> _mockLogger;
+        private Mock<ICommunications> _mockCommunications;
 
         [OneTimeSetUp]
         public void SetUpCnp()
         {
-            cnp = new CnpOnline();
+            _mockLogger = new Mock<ILogger>();
+            _mockCommunications = new Mock<ICommunications>();
+
+            _cnp = new CnpOnline(_mockCommunications.Object, _mockLogger.Object);
         }
 
         [Test]
@@ -30,14 +35,10 @@ namespace Cnp.Sdk.Test.Unit
             echeckRedeposit.merchantData.merchantGroupingId = "mgi";
             echeckRedeposit.customIdentifier = "customIdent";
            
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<echeckRedeposit.*<cnpTxnId>1</cnpTxnId>.*<merchantData>.*<campaign>camp</campaign>.*<affiliate>affil</affiliate>.*<merchantGroupingId>mgi</merchantGroupingId>.*</merchantData>.*", RegexOptions.Singleline)  ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<echeckRedeposit.*<cnpTxnId>1</cnpTxnId>.*<merchantData>.*<campaign>camp</campaign>.*<affiliate>affil</affiliate>.*<merchantGroupingId>mgi</merchantGroupingId>.*</merchantData>.*", RegexOptions.Singleline)  ))
                 .Returns("<cnpOnlineResponse version='8.13' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><echeckRedepositResponse><cnpTxnId>123</cnpTxnId></echeckRedepositResponse></cnpOnlineResponse>");
      
-            Communications mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            cnp.EcheckRedeposit(echeckRedeposit);
+            _cnp.EcheckRedeposit(echeckRedeposit);
         }     
         
         [Test]
@@ -51,14 +52,10 @@ namespace Cnp.Sdk.Test.Unit
             echeckRedeposit.merchantData.merchantGroupingId = "mgi";
             echeckRedeposit.customIdentifier = "customIdent";
            
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<echeckRedeposit.*<cnpTxnId>1</cnpTxnId>.*<merchantData>.*<campaign>camp</campaign>.*<affiliate>affil</affiliate>.*<merchantGroupingId>mgi</merchantGroupingId>.*</merchantData>.*", RegexOptions.Singleline)))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<echeckRedeposit.*<cnpTxnId>1</cnpTxnId>.*<merchantData>.*<campaign>camp</campaign>.*<affiliate>affil</affiliate>.*<merchantGroupingId>mgi</merchantGroupingId>.*</merchantData>.*", RegexOptions.Singleline)))
                 .Returns("<cnpOnlineResponse version='8.13' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><echeckRedepositResponse><cnpTxnId>123</cnpTxnId><location>sandbox</location></echeckRedepositResponse></cnpOnlineResponse>");
      
-            Communications mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var response = cnp.EcheckRedeposit(echeckRedeposit);
+            var response = _cnp.EcheckRedeposit(echeckRedeposit);
             
             Assert.NotNull(response);
             Assert.AreEqual("sandbox", response.location);

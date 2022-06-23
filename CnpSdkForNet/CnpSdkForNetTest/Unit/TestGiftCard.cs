@@ -3,18 +3,25 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Moq;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
+using Cnp.Sdk.Interfaces;
 
 namespace Cnp.Sdk.Test.Unit
 {
     [TestFixture]
     class TestGiftCard
     {
-        private CnpOnline cnp;
+        private CnpOnline _cnp;
+        private Mock<ILogger> _mockLogger;
+        private Mock<ICommunications> _mockCommunications;
 
         [OneTimeSetUp]
         public void SetUpCnp()
         {
-            cnp = new CnpOnline();
+            _mockLogger = new Mock<ILogger>();
+            _mockCommunications = new Mock<ICommunications>();
+
+            _cnp = new CnpOnline(_mockCommunications.Object, _mockLogger.Object);
         }
 
         [Test]
@@ -30,14 +37,10 @@ namespace Cnp.Sdk.Test.Unit
             giftCard.originalSystemTraceId = 123;
             giftCard.originalSequenceNumber = "123456";
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<cnpTxnId>123456789</cnpTxnId>\r\n<originalRefCode>abc123</originalRefCode>\r\n<originalAmount>500</originalAmount>\r\n<originalTxnTime>2017-01-01T00:00:00Z</originalTxnTime>\r\n<originalSystemTraceId>123</originalSystemTraceId>\r\n<originalSequenceNumber>123456</originalSequenceNumber>.*", RegexOptions.Singleline)  ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<cnpTxnId>123456789</cnpTxnId>\r\n<originalRefCode>abc123</originalRefCode>\r\n<originalAmount>500</originalAmount>\r\n<originalTxnTime>2017-01-01T00:00:00Z</originalTxnTime>\r\n<originalSystemTraceId>123</originalSystemTraceId>\r\n<originalSequenceNumber>123456</originalSequenceNumber>.*", RegexOptions.Singleline)  ))
                 .Returns("<cnpOnlineResponse version='8.18' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><giftCardAuthReversalResponse><cnpTxnId>123</cnpTxnId></giftCardAuthReversalResponse></cnpOnlineResponse>");
 
-            Communications mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            giftCardAuthReversalResponse giftCardAuthReversalResponse = cnp.GiftCardAuthReversal(giftCard);
+            giftCardAuthReversalResponse giftCardAuthReversalResponse = _cnp.GiftCardAuthReversal(giftCard);
             Assert.AreEqual(123, giftCardAuthReversalResponse.cnpTxnId);
         }
 
@@ -54,14 +57,10 @@ namespace Cnp.Sdk.Test.Unit
             card.expDate = "1210";
             giftCard.card = card;
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<card>\r\n<type>GC</type>\r\n<number>414100000000000000</number>\r\n<expDate>1210</expDate>\r\n</card>.*", RegexOptions.Singleline)  ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<card>\r\n<type>GC</type>\r\n<number>414100000000000000</number>\r\n<expDate>1210</expDate>\r\n</card>.*", RegexOptions.Singleline)  ))
                 .Returns("<cnpOnlineResponse version='8.18' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><giftCardAuthReversalResponse><cnpTxnId>123</cnpTxnId></giftCardAuthReversalResponse></cnpOnlineResponse>");
 
-            Communications mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            giftCardAuthReversalResponse giftCardAuthReversalResponse = cnp.GiftCardAuthReversal(giftCard);
+            giftCardAuthReversalResponse giftCardAuthReversalResponse = _cnp.GiftCardAuthReversal(giftCard);
             Assert.AreEqual(123, giftCardAuthReversalResponse.cnpTxnId);
         }
 
@@ -82,14 +81,10 @@ namespace Cnp.Sdk.Test.Unit
             giftCardCapture.originalAmount = 43534345;
             giftCardCapture.originalTxnTime = new DateTime(2017, 01, 01);
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<cnpTxnId>123456000</cnpTxnId>\r\n<captureAmount>106</captureAmount>\r\n<card>\r\n<type>GC</type>\r\n<number>414100000000000000</number>\r\n<expDate>1210</expDate>\r\n</card>\r\n<originalRefCode>abc123</originalRefCode>\r\n<originalAmount>43534345</originalAmount>\r\n<originalTxnTime>2017-01-01T00:00:00Z</originalTxnTime>.*", RegexOptions.Singleline)  ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<cnpTxnId>123456000</cnpTxnId>\r\n<captureAmount>106</captureAmount>\r\n<card>\r\n<type>GC</type>\r\n<number>414100000000000000</number>\r\n<expDate>1210</expDate>\r\n</card>\r\n<originalRefCode>abc123</originalRefCode>\r\n<originalAmount>43534345</originalAmount>\r\n<originalTxnTime>2017-01-01T00:00:00Z</originalTxnTime>.*", RegexOptions.Singleline)  ))
                 .Returns("<cnpOnlineResponse version='8.14' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><giftCardCaptureResponse><cnpTxnId>123</cnpTxnId></giftCardCaptureResponse></cnpOnlineResponse>");
 
-            Communications mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            cnp.GiftCardCapture(giftCardCapture);
+            _cnp.GiftCardCapture(giftCardCapture);
         }
 
         [Test]
@@ -106,14 +101,10 @@ namespace Cnp.Sdk.Test.Unit
             card.expDate = "1210";
             credit.card = card;
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<cnpTxnId>123456000</cnpTxnId>\r\n<creditAmount>106</creditAmount>\r\n<card>\r\n<type>GC</type>\r\n<number>4100000000000000</number>\r\n<expDate>1210</expDate>\r.*", RegexOptions.Singleline)  ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<cnpTxnId>123456000</cnpTxnId>\r\n<creditAmount>106</creditAmount>\r\n<card>\r\n<type>GC</type>\r\n<number>4100000000000000</number>\r\n<expDate>1210</expDate>\r.*", RegexOptions.Singleline)  ))
                 .Returns("<cnpOnlineResponse version='8.10' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><giftCardCreditResponse><cnpTxnId>123</cnpTxnId></giftCardCreditResponse></cnpOnlineResponse>");
 
-            Communications mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            cnp.GiftCardCredit(credit);
+            _cnp.GiftCardCredit(credit);
         }
 
         [Test]
@@ -131,14 +122,10 @@ namespace Cnp.Sdk.Test.Unit
             card.expDate = "1210";
             credit.card = card;
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<orderId>2111</orderId>\r\n<creditAmount>106</creditAmount>\r\n<orderSource>echeckppd</orderSource>\r\n<card>\r\n<type>GC</type>\r\n<number>4100000000000000</number>\r\n<expDate>1210</expDate>\r.*", RegexOptions.Singleline)  ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<orderId>2111</orderId>\r\n<creditAmount>106</creditAmount>\r\n<orderSource>echeckppd</orderSource>\r\n<card>\r\n<type>GC</type>\r\n<number>4100000000000000</number>\r\n<expDate>1210</expDate>\r.*", RegexOptions.Singleline)  ))
                 .Returns("<cnpOnlineResponse version='8.10' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><giftCardCreditResponse><cnpTxnId>123</cnpTxnId></giftCardCreditResponse></cnpOnlineResponse>");
 
-            Communications mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            cnp.GiftCardCredit(credit);
+            _cnp.GiftCardCredit(credit);
         }
         
         [Test]
@@ -156,14 +143,10 @@ namespace Cnp.Sdk.Test.Unit
             card.expDate = "1210";
             credit.card = card;
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<orderId>2111</orderId>\r\n<creditAmount>106</creditAmount>\r\n<orderSource>echeckppd</orderSource>\r\n<card>\r\n<type>GC</type>\r\n<number>4100000000000000</number>\r\n<expDate>1210</expDate>\r.*", RegexOptions.Singleline)))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<orderId>2111</orderId>\r\n<creditAmount>106</creditAmount>\r\n<orderSource>echeckppd</orderSource>\r\n<card>\r\n<type>GC</type>\r\n<number>4100000000000000</number>\r\n<expDate>1210</expDate>\r.*", RegexOptions.Singleline)))
                 .Returns("<cnpOnlineResponse version='8.10' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><giftCardCreditResponse><cnpTxnId>123</cnpTxnId><location>sandbox</location></giftCardCreditResponse></cnpOnlineResponse>");
 
-            Communications mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var response = cnp.GiftCardCredit(credit);
+            var response = _cnp.GiftCardCredit(credit);
             
             Assert.NotNull(response);
             Assert.AreEqual("sandbox", response.location);

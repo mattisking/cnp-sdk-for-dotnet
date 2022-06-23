@@ -5,14 +5,18 @@ using NUnit.Framework;
 using Moq;
 using System.Text.RegularExpressions;
 using System.Xml;
-
+using Microsoft.Extensions.Logging;
+using Cnp.Sdk.Interfaces;
+using Cnp.Sdk.Core;
 
 namespace Cnp.Sdk.Test.Unit
 {
     [TestFixture]
     class TestBatch
     {
-        private cnpRequest cnp;
+        private cnpRequest _cnp;
+        private Mock<ICommunications> _mockCommunications;
+
         private const string timeFormat = "MM-dd-yyyy_HH-mm-ss-ffff_";
         private const string timeRegex = "[0-1][0-9]-[0-3][0-9]-[0-9]{4}_[0-9]{2}-[0-9]{2}-[0-9]{2}-[0-9]{4}_";
         private const string batchNameRegex = timeRegex + "[A-Z]{8}";
@@ -22,7 +26,6 @@ namespace Cnp.Sdk.Test.Unit
 
         private Mock<cnpTime> mockCnpTime;
         private Mock<cnpFile> mockCnpFile;
-        private Mock<Communications> mockCommunications;
         private Mock<XmlReader> mockXmlReader;
 
         [OneTimeSetUp]
@@ -37,7 +40,7 @@ namespace Cnp.Sdk.Test.Unit
             mockCnpFile.Setup(cnpFile => cnpFile.AppendFileToFile(mockFilePath, It.IsAny<String>())).Returns(mockFilePath);
             mockCnpFile.Setup(cnpFile => cnpFile.AppendLineToFile(mockFilePath, It.IsAny<String>())).Returns(mockFilePath);
 
-            mockCommunications = new Mock<Communications>();
+            _mockCommunications = new Mock<ICommunications>();
         }
 
         [SetUp]
@@ -46,7 +49,7 @@ namespace Cnp.Sdk.Test.Unit
             Dictionary<String,String> config = new ConfigManager().getConfig();
             config["requestDirectory"] = tempDirectroyPath + "MockRequests";
             config["responseDirectory"] = tempDirectroyPath + "MockResponses";
-            cnp = new cnpRequest(config);
+            _cnp = new cnpRequest(_mockCommunications.Object, config);
 
             mockXmlReader = new Mock<XmlReader>();
             mockXmlReader.SetupSequence(XmlReader => XmlReader.ReadToFollowing(It.IsAny<String>())).Returns(true).Returns(true).Returns(false);
@@ -75,15 +78,15 @@ namespace Cnp.Sdk.Test.Unit
             mockConfig["requestDirectory"] = tempDirectroyPath + "MockRequests";
             mockConfig["responseDirectory"] = tempDirectroyPath + "MockResponses";
 
-            cnp = new cnpRequest(mockConfig);
+            _cnp = new cnpRequest(_mockCommunications.Object, mockConfig);
 
-            Assert.AreEqual(Path.Combine(tempDirectroyPath,"MockRequests","Requests") + Path.DirectorySeparatorChar, cnp.getRequestDirectory());
-            Assert.AreEqual(Path.Combine(tempDirectroyPath,"MockResponses","Responses") + Path.DirectorySeparatorChar, cnp.getResponseDirectory());
+            Assert.AreEqual(Path.Combine(tempDirectroyPath,"MockRequests","Requests") + Path.DirectorySeparatorChar, _cnp.getRequestDirectory());
+            Assert.AreEqual(Path.Combine(tempDirectroyPath,"MockResponses","Responses") + Path.DirectorySeparatorChar, _cnp.getResponseDirectory());
 
-            Assert.NotNull(cnp.getCommunication());
-            Assert.NotNull(cnp.getCnpTime());
-            Assert.NotNull(cnp.getCnpFile());
-            Assert.NotNull(cnp.getCnpXmlSerializer());
+            Assert.NotNull(_cnp.getCommunication());
+            Assert.NotNull(_cnp.getCnpTime());
+            Assert.NotNull(_cnp.getCnpFile());
+            Assert.NotNull(_cnp.getCnpXmlSerializer());
         }
 
         [Test]
@@ -113,26 +116,23 @@ namespace Cnp.Sdk.Test.Unit
 
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
 
-            Communications mockedCommunication = mockCommunications.Object;
-            cnp.setCommunication(mockedCommunication);
-
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
-            cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpFile(mockedCnpFile);
 
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addAccountUpdate(accountUpdate);
             cnpBatchRequest.addAccountUpdate(accountUpdate);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            string batchFileName = _cnp.sendToCnp();
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
             accountUpdateResponse actualAccountUpdateResponse1 = actualCnpBatchResponse.nextAccountUpdateResponse();
             accountUpdateResponse actualAccountUpdateResponse2 = actualCnpBatchResponse.nextAccountUpdateResponse();
@@ -144,8 +144,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual("000", actualAccountUpdateResponse2.response);
             Assert.IsNull(nullAccountUpdateResponse);
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
 
@@ -178,26 +178,23 @@ namespace Cnp.Sdk.Test.Unit
 
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
 
-            Communications mockedCommunication = mockCommunications.Object;
-            cnp.setCommunication(mockedCommunication);
-
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
-            cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpFile(mockedCnpFile);
 
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addAuthorization(authorization);
             cnpBatchRequest.addAuthorization(authorization);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            string batchFileName = _cnp.sendToCnp();
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
 
             Assert.AreSame(mockCnpBatchResponse, actualCnpBatchResponse);
@@ -205,8 +202,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(124, actualCnpBatchResponse.nextAuthorizationResponse().cnpTxnId);
             Assert.IsNull(actualCnpBatchResponse.nextAuthorizationResponse());
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -232,27 +229,24 @@ namespace Cnp.Sdk.Test.Unit
 
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
 
-            Communications mockedCommunications = mockCommunications.Object;
-            cnp.setCommunication(mockedCommunications);
-
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
-            cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpFile(mockedCnpFile);
 
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addAuthReversal(authreversal);
             cnpBatchRequest.addAuthReversal(authreversal);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
+            string batchFileName = _cnp.sendToCnp();
 
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
             authReversalResponse actualAuthReversalResponse1 = actualCnpBatchResponse.nextAuthReversalResponse();
             authReversalResponse actualAuthReversalResponse2 = actualCnpBatchResponse.nextAuthReversalResponse();
@@ -262,8 +256,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(124, actualAuthReversalResponse2.cnpTxnId);
             Assert.IsNull(nullAuthReversalResponse);
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -286,28 +280,25 @@ namespace Cnp.Sdk.Test.Unit
             mockCnpResponse.Setup(cnpResponse => cnpResponse.nextBatchResponse()).Returns(mockedCnpBatchResponse);
             cnpResponse mockedCnpResponse = mockCnpResponse.Object;
 
-            Communications mockedCommunications = mockCommunications.Object;
-
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
 
-            cnp.setCommunication(mockedCommunications);
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
-            cnp.setCnpFile(mockedCnpFile);
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addCapture(capture);
             cnpBatchRequest.addCapture(capture);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
+            string batchFileName = _cnp.sendToCnp();
 
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
             captureResponse actualCaptureResponse1 = actualCnpBatchResponse.nextCaptureResponse();
             captureResponse actualCaptureResponse2 = actualCnpBatchResponse.nextCaptureResponse();
@@ -317,8 +308,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(124, actualCaptureResponse2.cnpTxnId);
             Assert.IsNull(nullCaptureResponse);
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -352,28 +343,25 @@ namespace Cnp.Sdk.Test.Unit
             mockCnpResponse.Setup(cnpResponse => cnpResponse.nextBatchResponse()).Returns(mockedCnpBatchResponse);
             cnpResponse mockedCnpResponse = mockCnpResponse.Object;
 
-            Communications mockedCommunications = mockCommunications.Object;
-
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
 
-            cnp.setCommunication(mockedCommunications);
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
-            cnp.setCnpFile(mockedCnpFile);
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addCaptureGivenAuth(capturegivenauth);
             cnpBatchRequest.addCaptureGivenAuth(capturegivenauth);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
+            string batchFileName = _cnp.sendToCnp();
 
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
             captureGivenAuthResponse actualCaptureGivenAuthReponse1 = actualCnpBatchResponse.nextCaptureGivenAuthResponse();
             captureGivenAuthResponse actualCaptureGivenAuthReponse2 = actualCnpBatchResponse.nextCaptureGivenAuthResponse();
@@ -383,8 +371,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(124, actualCaptureGivenAuthReponse2.cnpTxnId);
             Assert.IsNull(nullCaptureGivenAuthReponse);
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -413,28 +401,25 @@ namespace Cnp.Sdk.Test.Unit
             mockCnpResponse.Setup(cnpResponse => cnpResponse.nextBatchResponse()).Returns(mockedCnpBatchResponse);
             cnpResponse mockedCnpResponse = mockCnpResponse.Object;
 
-            Communications mockedCommunications = mockCommunications.Object;
-
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
 
-            cnp.setCommunication(mockedCommunications);
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
-            cnp.setCnpFile(mockedCnpFile);
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addCredit(credit);
             cnpBatchRequest.addCredit(credit);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
+            string batchFileName = _cnp.sendToCnp();
 
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
             creditResponse actualCreditReponse1 = actualCnpBatchResponse.nextCreditResponse();
             creditResponse actualCreditReponse2 = actualCnpBatchResponse.nextCreditResponse();
@@ -444,8 +429,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(124, actualCreditReponse2.cnpTxnId);
             Assert.IsNull(nullCreditReponse1);
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -468,28 +453,25 @@ namespace Cnp.Sdk.Test.Unit
             mockCnpResponse.Setup(cnpResponse => cnpResponse.nextBatchResponse()).Returns(mockedCnpBatchResponse);
             cnpResponse mockedCnpResponse = mockCnpResponse.Object;
 
-            Communications mockedCommunications = mockCommunications.Object;
-
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
 
-            cnp.setCommunication(mockedCommunications);
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
-            cnp.setCnpFile(mockedCnpFile);
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addEcheckCredit(echeckcredit);
             cnpBatchRequest.addEcheckCredit(echeckcredit);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
+            string batchFileName = _cnp.sendToCnp();
 
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
             echeckCreditResponse actualEcheckCreditResponse1 = actualCnpBatchResponse.nextEcheckCreditResponse();
             echeckCreditResponse actualEcheckCreditResponse2 = actualCnpBatchResponse.nextEcheckCreditResponse();
@@ -499,8 +481,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(124, actualEcheckCreditResponse2.cnpTxnId);
             Assert.IsNull(nullEcheckCreditResponse);
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -522,28 +504,25 @@ namespace Cnp.Sdk.Test.Unit
             mockCnpResponse.Setup(cnpResponse => cnpResponse.nextBatchResponse()).Returns(mockedCnpBatchResponse);
             cnpResponse mockedCnpResponse = mockCnpResponse.Object;
 
-            Communications mockedCommunications = mockCommunications.Object;
-
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
 
-            cnp.setCommunication(mockedCommunications);
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
-            cnp.setCnpFile(mockedCnpFile);
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addEcheckRedeposit(echeckredeposit);
             cnpBatchRequest.addEcheckRedeposit(echeckredeposit);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
+            string batchFileName = _cnp.sendToCnp();
 
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
             echeckRedepositResponse actualEcheckRedepositResponse1 = actualCnpBatchResponse.nextEcheckRedepositResponse();
             echeckRedepositResponse actualEcheckRedepositResponse2 = actualCnpBatchResponse.nextEcheckRedepositResponse();
@@ -553,8 +532,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(124, actualEcheckRedepositResponse2.cnpTxnId);
             Assert.IsNull(nullEcheckRedepositResponse);
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -590,28 +569,25 @@ namespace Cnp.Sdk.Test.Unit
             mockCnpResponse.Setup(cnpResponse => cnpResponse.nextBatchResponse()).Returns(mockedCnpBatchResponse);
             cnpResponse mockedCnpResponse = mockCnpResponse.Object;
 
-            Communications mockedCommunications = mockCommunications.Object;
-
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
 
-            cnp.setCommunication(mockedCommunications);
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
-            cnp.setCnpFile(mockedCnpFile);
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addEcheckSale(echecksale);
             cnpBatchRequest.addEcheckSale(echecksale);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
+            string batchFileName = _cnp.sendToCnp();
 
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
             echeckSalesResponse actualEcheckSalesResponse1 = actualCnpBatchResponse.nextEcheckSalesResponse();
             echeckSalesResponse actualEcheckSalesResponse2 = actualCnpBatchResponse.nextEcheckSalesResponse();
@@ -621,8 +597,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(124, actualEcheckSalesResponse2.cnpTxnId);
             Assert.IsNull(nullEcheckSalesResponse);
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -658,28 +634,25 @@ namespace Cnp.Sdk.Test.Unit
             mockCnpResponse.Setup(cnpResponse => cnpResponse.nextBatchResponse()).Returns(mockedCnpBatchResponse);
             cnpResponse mockedCnpResponse = mockCnpResponse.Object;
 
-            Communications mockedCommunications = mockCommunications.Object;
-
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
 
-            cnp.setCommunication(mockedCommunications);
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
-            cnp.setCnpFile(mockedCnpFile);
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addEcheckVerification(echeckverification);
             cnpBatchRequest.addEcheckVerification(echeckverification);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
+            string batchFileName = _cnp.sendToCnp();
 
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
             echeckVerificationResponse actualEcheckVerificationResponse1 = actualCnpBatchResponse.nextEcheckVerificationResponse();
             echeckVerificationResponse actualEcheckVerificationResponse2 = actualCnpBatchResponse.nextEcheckVerificationResponse();
@@ -689,8 +662,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(124, actualEcheckVerificationResponse2.cnpTxnId);
             Assert.IsNull(nullEcheckVerificationResponse);
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -719,28 +692,25 @@ namespace Cnp.Sdk.Test.Unit
             mockCnpResponse.Setup(cnpResponse => cnpResponse.nextBatchResponse()).Returns(mockedCnpBatchResponse);
             cnpResponse mockedCnpResponse = mockCnpResponse.Object;
 
-            Communications mockedCommunications = mockCommunications.Object;
-
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
 
-            cnp.setCommunication(mockedCommunications);
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
-            cnp.setCnpFile(mockedCnpFile);
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addForceCapture(forcecapture);
             cnpBatchRequest.addForceCapture(forcecapture);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
+            string batchFileName = _cnp.sendToCnp();
 
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
             forceCaptureResponse actualForceCaptureResponse1 = actualCnpBatchResponse.nextForceCaptureResponse();
             forceCaptureResponse actualForceCaptureResponse2 = actualCnpBatchResponse.nextForceCaptureResponse();
@@ -750,8 +720,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(124, actualForceCaptureResponse2.cnpTxnId);
             Assert.IsNull(nullForceCaptureResponse);
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -780,28 +750,25 @@ namespace Cnp.Sdk.Test.Unit
             mockCnpResponse.Setup(cnpResponse => cnpResponse.nextBatchResponse()).Returns(mockedCnpBatchResponse);
             cnpResponse mockedCnpResponse = mockCnpResponse.Object;
 
-            Communications mockedCommunications = mockCommunications.Object;
-
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
 
-            cnp.setCommunication(mockedCommunications);
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
-            cnp.setCnpFile(mockedCnpFile);
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addSale(sale);
             cnpBatchRequest.addSale(sale);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
+            string batchFileName = _cnp.sendToCnp();
 
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
             saleResponse actualSaleResponse1 = actualCnpBatchResponse.nextSaleResponse();
             saleResponse actualSaleResponse2 = actualCnpBatchResponse.nextSaleResponse();
@@ -811,8 +778,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(124, actualSaleResponse2.cnpTxnId);
             Assert.IsNull(nullSaleResponse);
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -835,28 +802,25 @@ namespace Cnp.Sdk.Test.Unit
             mockCnpResponse.Setup(cnpResponse => cnpResponse.nextBatchResponse()).Returns(mockedCnpBatchResponse);
             cnpResponse mockedCnpResponse = mockCnpResponse.Object;
 
-            Communications mockedCommunications = mockCommunications.Object;
-
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
 
-            cnp.setCommunication(mockedCommunications);
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
-            cnp.setCnpFile(mockedCnpFile);
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addRegisterTokenRequest(token);
             cnpBatchRequest.addRegisterTokenRequest(token);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
+            string batchFileName = _cnp.sendToCnp();
 
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
             registerTokenResponse actualRegisterTokenResponse1 = actualCnpBatchResponse.nextRegisterTokenResponse();
             registerTokenResponse actualRegisterTokenResponse2 = actualCnpBatchResponse.nextRegisterTokenResponse();
@@ -866,8 +830,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(124, actualRegisterTokenResponse2.cnpTxnId);
             Assert.IsNull(nullRegisterTokenResponse);
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -890,28 +854,25 @@ namespace Cnp.Sdk.Test.Unit
             mockCnpResponse.Setup(cnpResponse => cnpResponse.nextBatchResponse()).Returns(mockedCnpBatchResponse);
             cnpResponse mockedCnpResponse = mockCnpResponse.Object;
 
-            Communications mockedCommunications = mockCommunications.Object;
-
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
 
-            cnp.setCommunication(mockedCommunications);
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
-            cnp.setCnpFile(mockedCnpFile);
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addUpdateCardValidationNumOnToken(updateCardValidationNumOnToken);
             cnpBatchRequest.addUpdateCardValidationNumOnToken(updateCardValidationNumOnToken);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
+            string batchFileName = _cnp.sendToCnp();
 
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
             updateCardValidationNumOnTokenResponse actualUpdateCardValidationNumOnTokenResponse1 = actualCnpBatchResponse.nextUpdateCardValidationNumOnTokenResponse();
             updateCardValidationNumOnTokenResponse actualUpdateCardValidationNumOnTokenResponse2 = actualCnpBatchResponse.nextUpdateCardValidationNumOnTokenResponse();
@@ -921,8 +882,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(124, actualUpdateCardValidationNumOnTokenResponse2.cnpTxnId);
             Assert.IsNull(nullUpdateCardValidationNumOnTokenResponse);
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -957,8 +918,6 @@ namespace Cnp.Sdk.Test.Unit
             mockedCnpResponse.message = "Error validating xml data against the schema";
             mockedCnpResponse.response = "1";
 
-            Communications mockedCommunications = mockCommunications.Object;
-
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
 
@@ -966,20 +925,19 @@ namespace Cnp.Sdk.Test.Unit
 
             try
             {
-                cnp.setCommunication(mockedCommunications);
-                cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
-                cnp.setCnpFile(mockedCnpFile);
-                cnp.setCnpTime(mockCnpTime.Object);
+                _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+                _cnp.setCnpFile(mockedCnpFile);
+                _cnp.setCnpTime(mockCnpTime.Object);
                 batchRequest cnpBatchRequest = new batchRequest();
                 cnpBatchRequest.setCnpFile(mockedCnpFile);
                 cnpBatchRequest.setCnpTime(mockCnpTime.Object);
 
                 cnpBatchRequest.addAuthorization(authorization);
                 cnpBatchRequest.addAuthorization(authorization);
-                cnp.addBatch(cnpBatchRequest);
+                _cnp.addBatch(cnpBatchRequest);
 
-                string batchFileName = cnp.sendToCnp();
-                cnpResponse cnpResponse = cnp.receiveFromCnp(batchFileName);
+                string batchFileName = _cnp.sendToCnp();
+                cnpResponse cnpResponse = _cnp.receiveFromCnp(batchFileName);
             }
             catch (CnpOnlineException e)
             {
@@ -1005,8 +963,6 @@ namespace Cnp.Sdk.Test.Unit
 
             var mockXml = new Mock<cnpXmlSerializer>();
 
-            Communications mockedCommunications = mockCommunications.Object;
-
             mockXml.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockCnpResponse);
             cnpXmlSerializer mockedCnpXmlSerializer = mockXml.Object;
 
@@ -1014,20 +970,19 @@ namespace Cnp.Sdk.Test.Unit
 
             try
             {
-                cnp.setCommunication(mockedCommunications);
-                cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
-                cnp.setCnpFile(mockedCnpFile);
-                cnp.setCnpTime(mockCnpTime.Object);
+                _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+                _cnp.setCnpFile(mockedCnpFile);
+                _cnp.setCnpTime(mockCnpTime.Object);
                 batchRequest cnpBatchRequest = new batchRequest();
                 cnpBatchRequest.setCnpFile(mockedCnpFile);
                 cnpBatchRequest.setCnpTime(mockCnpTime.Object);
 
                 cnpBatchRequest.addAuthorization(authorization);
                 cnpBatchRequest.addAuthorization(authorization);
-                cnp.addBatch(cnpBatchRequest);
+                _cnp.addBatch(cnpBatchRequest);
 
-                string batchFileName = cnp.sendToCnp();
-                cnpResponse cnpResponse = cnp.receiveFromCnp(batchFileName);
+                string batchFileName = _cnp.sendToCnp();
+                cnpResponse cnpResponse = _cnp.receiveFromCnp(batchFileName);
             }
             catch (CnpOnlineException e)
             {
@@ -1061,27 +1016,24 @@ namespace Cnp.Sdk.Test.Unit
             mockCnpResponse.Setup(cnpResponse => cnpResponse.nextBatchResponse()).Returns(mockedCnpBatchResponse);
             cnpResponse mockedCnpResponse = mockCnpResponse.Object;
 
-            Communications mockedCommunications = mockCommunications.Object;
-
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
 
-            cnp.setCommunication(mockedCommunications);
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
-            cnp.setCnpFile(mockedCnpFile);
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpTime(mockCnpTime.Object);
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addAuthorization(authorization);
             cnpBatchRequest.addAuthorization(authorization);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
+            string batchFileName = _cnp.sendToCnp();
 
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
             authorizationResponse actualAuthorizationResponse1 = actualCnpBatchResponse.nextAuthorizationResponse();
             authorizationResponse actualAuthorizationResponse2 = actualCnpBatchResponse.nextAuthorizationResponse();
@@ -1094,8 +1046,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.IsNull(nullAuthorizationResponse);
 
             mockCnpFile.Verify(cnpFile => cnpFile.AppendLineToFile(mockFilePath, It.IsRegex(".*reportGroup=\"Default Report Group\".*", RegexOptions.Singleline)));
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -1114,15 +1066,15 @@ namespace Cnp.Sdk.Test.Unit
             cnpFile mockedCnpFile = mockCnpFile.Object;
             cnpTime mockedCnpTime = mockCnpTime.Object;
 
-            cnp.setCnpTime(mockedCnpTime);
-            cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpTime(mockedCnpTime);
+            _cnp.setCnpFile(mockedCnpFile);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.addAuthorization(authorization);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string resultFile = cnp.Serialize();
+            string resultFile = _cnp.Serialize();
 
             Assert.IsTrue(resultFile.Equals(mockFilePath));
 
@@ -1151,21 +1103,19 @@ namespace Cnp.Sdk.Test.Unit
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
             cnpTime mockedCnpTime = mockCnpTime.Object;
-            Communications mockedCommunications = mockCommunications.Object;
 
-            cnp.setCnpFile(mockedCnpFile);
-            cnp.setCnpTime(mockedCnpTime);
-            cnp.setCommunication(mockedCommunications);
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpTime(mockedCnpTime);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
 
             rfrRequest.setCnpFile(mockedCnpFile);
             rfrRequest.setCnpTime(mockedCnpTime);
 
-            cnp.addRFRRequest(rfrRequest);
+            _cnp.addRFRRequest(rfrRequest);
 
-            string batchFileName = cnp.sendToCnp();
+            string batchFileName = _cnp.sendToCnp();
 
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse nullCnpBatchResponse = actualCnpResponse.nextBatchResponse();
             RFRResponse actualRFRResponse = actualCnpResponse.nextRFRResponse();
             RFRResponse nullRFRResponse = actualCnpResponse.nextRFRResponse();
@@ -1176,8 +1126,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.IsNull(nullCnpBatchResponse);
             Assert.IsNull(nullRFRResponse);
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -1201,25 +1151,22 @@ namespace Cnp.Sdk.Test.Unit
 
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
 
-            Communications mockedCommunication = mockCommunications.Object;
-            cnp.setCommunication(mockedCommunication);
-
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
-            cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpFile(mockedCnpFile);
 
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addCancelSubscription(cancel);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            string batchFileName = _cnp.sendToCnp();
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
 
             Assert.AreSame(mockCnpBatchResponse, actualCnpBatchResponse);
@@ -1227,8 +1174,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual("54321", actualCnpBatchResponse.nextCancelSubscriptionResponse().subscriptionId);
             Assert.IsNull(actualCnpBatchResponse.nextCancelSubscriptionResponse());
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -1265,25 +1212,22 @@ namespace Cnp.Sdk.Test.Unit
 
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
 
-            Communications mockedCommunication = mockCommunications.Object;
-            cnp.setCommunication(mockedCommunication);
-
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
-            cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpFile(mockedCnpFile);
 
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addUpdateSubscription(update);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            string batchFileName = _cnp.sendToCnp();
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
 
             Assert.AreSame(mockCnpBatchResponse, actualCnpBatchResponse);
@@ -1291,8 +1235,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual("54321", actualCnpBatchResponse.nextUpdateSubscriptionResponse().subscriptionId);
             Assert.IsNull(actualCnpBatchResponse.nextUpdateSubscriptionResponse());
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -1319,26 +1263,23 @@ namespace Cnp.Sdk.Test.Unit
 
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
 
-            Communications mockedCommunication = mockCommunications.Object;
-            cnp.setCommunication(mockedCommunication);
-
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
-            cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpFile(mockedCnpFile);
 
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addCreatePlan(createPlan);
             cnpBatchRequest.addCreatePlan(createPlan);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            string batchFileName = _cnp.sendToCnp();
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
 
             Assert.AreSame(mockCnpBatchResponse, actualCnpBatchResponse);
@@ -1346,8 +1287,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual("124", actualCnpBatchResponse.nextCreatePlanResponse().cnpTxnId);
             Assert.IsNull(actualCnpBatchResponse.nextCreatePlanResponse());
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -1372,26 +1313,23 @@ namespace Cnp.Sdk.Test.Unit
 
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
 
-            Communications mockedCommunication = mockCommunications.Object;
-            cnp.setCommunication(mockedCommunication);
-
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
-            cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpFile(mockedCnpFile);
 
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addUpdatePlan(updatePlan);
             cnpBatchRequest.addUpdatePlan(updatePlan);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            string batchFileName = _cnp.sendToCnp();
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
 
             Assert.AreSame(mockCnpBatchResponse, actualCnpBatchResponse);
@@ -1399,8 +1337,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual("124", actualCnpBatchResponse.nextUpdatePlanResponse().cnpTxnId);
             Assert.IsNull(actualCnpBatchResponse.nextUpdatePlanResponse());
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -1426,26 +1364,23 @@ namespace Cnp.Sdk.Test.Unit
 
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
 
-            Communications mockedCommunication = mockCommunications.Object;
-            cnp.setCommunication(mockedCommunication);
-
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
-            cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpFile(mockedCnpFile);
 
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addActivate(activate);
             cnpBatchRequest.addActivate(activate);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            string batchFileName = _cnp.sendToCnp();
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
 
             Assert.AreSame(mockCnpBatchResponse, actualCnpBatchResponse);
@@ -1453,8 +1388,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(124, actualCnpBatchResponse.nextActivateResponse().cnpTxnId);
             Assert.IsNull(actualCnpBatchResponse.nextActivateResponse());
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -1480,26 +1415,23 @@ namespace Cnp.Sdk.Test.Unit
 
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
 
-            Communications mockedCommunication = mockCommunications.Object;
-            cnp.setCommunication(mockedCommunication);
-
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
-            cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpFile(mockedCnpFile);
 
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addDeactivate(deactivate);
             cnpBatchRequest.addDeactivate(deactivate);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            string batchFileName = _cnp.sendToCnp();
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
 
             Assert.AreSame(mockCnpBatchResponse, actualCnpBatchResponse);
@@ -1507,8 +1439,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(124, actualCnpBatchResponse.nextDeactivateResponse().cnpTxnId);
             Assert.IsNull(actualCnpBatchResponse.nextDeactivateResponse());
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -1534,26 +1466,23 @@ namespace Cnp.Sdk.Test.Unit
 
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
 
-            Communications mockedCommunication = mockCommunications.Object;
-            cnp.setCommunication(mockedCommunication);
-
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
-            cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpFile(mockedCnpFile);
 
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addLoad(load);
             cnpBatchRequest.addLoad(load);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            string batchFileName = _cnp.sendToCnp();
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
 
             Assert.AreSame(mockCnpBatchResponse, actualCnpBatchResponse);
@@ -1561,8 +1490,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(124, actualCnpBatchResponse.nextLoadResponse().cnpTxnId);
             Assert.IsNull(actualCnpBatchResponse.nextLoadResponse());
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -1588,26 +1517,23 @@ namespace Cnp.Sdk.Test.Unit
 
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
 
-            Communications mockedCommunication = mockCommunications.Object;
-            cnp.setCommunication(mockedCommunication);
-
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
-            cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpFile(mockedCnpFile);
 
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addUnload(unload);
             cnpBatchRequest.addUnload(unload);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            string batchFileName = _cnp.sendToCnp();
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
 
             Assert.AreSame(mockCnpBatchResponse, actualCnpBatchResponse);
@@ -1615,8 +1541,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(124, actualCnpBatchResponse.nextUnloadResponse().cnpTxnId);
             Assert.IsNull(actualCnpBatchResponse.nextUnloadResponse());
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -1642,26 +1568,23 @@ namespace Cnp.Sdk.Test.Unit
 
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
 
-            Communications mockedCommunication = mockCommunications.Object;
-            cnp.setCommunication(mockedCommunication);
-
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
-            cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpFile(mockedCnpFile);
 
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addBalanceInquiry(balanceInquiry);
             cnpBatchRequest.addBalanceInquiry(balanceInquiry);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            string batchFileName = _cnp.sendToCnp();
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
 
             Assert.AreSame(mockCnpBatchResponse, actualCnpBatchResponse);
@@ -1669,8 +1592,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(124, actualCnpBatchResponse.nextBalanceInquiryResponse().cnpTxnId);
             Assert.IsNull(actualCnpBatchResponse.nextBalanceInquiryResponse());
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -1705,28 +1628,25 @@ namespace Cnp.Sdk.Test.Unit
             mockCnpResponse.Setup(cnpResponse => cnpResponse.nextBatchResponse()).Returns(mockedCnpBatchResponse);
             cnpResponse mockedCnpResponse = mockCnpResponse.Object;
 
-            Communications mockedCommunications = mockCommunications.Object;
-
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
 
-            cnp.setCommunication(mockedCommunications);
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
-            cnp.setCnpFile(mockedCnpFile);
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addEcheckPreNoteSale(echeckPreNoteSale);
             cnpBatchRequest.addEcheckPreNoteSale(echeckPreNoteSale);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
+            string batchFileName = _cnp.sendToCnp();
 
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
             echeckPreNoteSaleResponse actualEcheckPreNoteSaleResponse1 = actualCnpBatchResponse.nextEcheckPreNoteSaleResponse();
             echeckPreNoteSaleResponse actualEcheckPreNoteSaleResponse2 = actualCnpBatchResponse.nextEcheckPreNoteSaleResponse();
@@ -1736,8 +1656,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(124, actualEcheckPreNoteSaleResponse2.cnpTxnId);
             Assert.IsNull(nullEcheckPreNoteSalesResponse);
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -1772,28 +1692,25 @@ namespace Cnp.Sdk.Test.Unit
             mockCnpResponse.Setup(cnpResponse => cnpResponse.nextBatchResponse()).Returns(mockedCnpBatchResponse);
             cnpResponse mockedCnpResponse = mockCnpResponse.Object;
 
-            Communications mockedCommunications = mockCommunications.Object;
-
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
 
-            cnp.setCommunication(mockedCommunications);
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
-            cnp.setCnpFile(mockedCnpFile);
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addEcheckPreNoteCredit(echeckPreNoteCredit);
             cnpBatchRequest.addEcheckPreNoteCredit(echeckPreNoteCredit);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
+            string batchFileName = _cnp.sendToCnp();
 
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
             echeckPreNoteCreditResponse actualEcheckPreNoteCreditResponse1 = actualCnpBatchResponse.nextEcheckPreNoteCreditResponse();
             echeckPreNoteCreditResponse actualEcheckPreNoteCreditResponse2 = actualCnpBatchResponse.nextEcheckPreNoteCreditResponse();
@@ -1803,8 +1720,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(124, actualEcheckPreNoteCreditResponse2.cnpTxnId);
             Assert.IsNull(nullEcheckPreNoteCreditsResponse);
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -1864,26 +1781,23 @@ namespace Cnp.Sdk.Test.Unit
 
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
 
-            Communications mockedCommunication = mockCommunications.Object;
-            cnp.setCommunication(mockedCommunication);
-
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
-            cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpFile(mockedCnpFile);
 
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addGiftCardAuthReversal(giftCardAuthReversal);
             cnpBatchRequest.addGiftCardAuthReversal(giftCardAuthReversal);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            string batchFileName = _cnp.sendToCnp();
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
 
             Assert.AreSame(mockCnpBatchResponse, actualCnpBatchResponse);
@@ -1891,8 +1805,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(522547723741503001, actualCnpBatchResponse.nextGiftCardAuthReversalResponse().cnpTxnId);
             Assert.IsNull(actualCnpBatchResponse.nextGiftCardAuthReversalResponse());
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -1951,26 +1865,23 @@ namespace Cnp.Sdk.Test.Unit
 
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
 
-            Communications mockedCommunication = mockCommunications.Object;
-            cnp.setCommunication(mockedCommunication);
-
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
-            cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpFile(mockedCnpFile);
 
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addGiftCardCapture(giftCardCapture);
             cnpBatchRequest.addGiftCardCapture(giftCardCapture);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            string batchFileName = _cnp.sendToCnp();
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
 
             Assert.AreSame(mockCnpBatchResponse, actualCnpBatchResponse);
@@ -1978,8 +1889,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(522547723741503001, actualCnpBatchResponse.nextGiftCardCaptureResponse().cnpTxnId);
             Assert.IsNull(actualCnpBatchResponse.nextGiftCardCaptureResponse());
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -2036,26 +1947,23 @@ namespace Cnp.Sdk.Test.Unit
 
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
 
-            Communications mockedCommunication = mockCommunications.Object;
-            cnp.setCommunication(mockedCommunication);
-
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
-            cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpFile(mockedCnpFile);
 
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addGiftCardCredit(giftCardCredit);
             cnpBatchRequest.addGiftCardCredit(giftCardCredit);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            string batchFileName = _cnp.sendToCnp();
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
 
             Assert.AreSame(mockCnpBatchResponse, actualCnpBatchResponse);
@@ -2063,8 +1971,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(522547723741503001, actualCnpBatchResponse.nextGiftCardCreditResponse().cnpTxnId);
             Assert.IsNull(actualCnpBatchResponse.nextGiftCardCreditResponse());
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -2124,26 +2032,23 @@ namespace Cnp.Sdk.Test.Unit
 
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
 
-            Communications mockedCommunication = mockCommunications.Object;
-            cnp.setCommunication(mockedCommunication);
-
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
-            cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpFile(mockedCnpFile);
 
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
             cnpBatchRequest.addGiftCardCredit(giftCardCredit);
             cnpBatchRequest.addGiftCardCredit(giftCardCredit);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            string batchFileName = _cnp.sendToCnp();
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
 
             Assert.AreSame(mockCnpBatchResponse, actualCnpBatchResponse);
@@ -2151,8 +2056,8 @@ namespace Cnp.Sdk.Test.Unit
             Assert.AreEqual(522547723741503001, actualCnpBatchResponse.nextGiftCardCreditResponse().cnpTxnId);
             Assert.IsNull(actualCnpBatchResponse.nextGiftCardCreditResponse());
 
-            mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
-            mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
+            _mockCommunications.Verify(Communications => Communications.FtpDropOff(It.IsAny<String>(), mockFileName  ));
+            _mockCommunications.Verify(Communications => Communications.FtpPickUp(It.IsAny<String>()  , mockFileName));
         }
 
         [Test]
@@ -2209,23 +2114,20 @@ namespace Cnp.Sdk.Test.Unit
 
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
 
-            Communications mockedCommunication = mockCommunications.Object;
-            cnp.setCommunication(mockedCommunication);
-
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
-            cnp.setCnpFile(mockedCnpFile);
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpTime(mockCnpTime.Object);
             
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
             
-            string batchFileName = cnp.sendToCnp();
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            string batchFileName = _cnp.sendToCnp();
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
             saleResponse saleResponse = actualCnpBatchResponse.nextSaleResponse();
             
@@ -2253,23 +2155,20 @@ namespace Cnp.Sdk.Test.Unit
                 .Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>()))
                 .Returns(mockedCnpResponse);
 
-            Communications mockedCommunication = mockCommunications.Object;
-            cnp.setCommunication(mockedCommunication);
-
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
-            cnp.setCnpFile(mockedCnpFile);
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpTime(mockCnpTime.Object);
 
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
 
-            string batchFileName = cnp.sendToCnp();
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            string batchFileName = _cnp.sendToCnp();
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
             saleResponse saleResponse = actualCnpBatchResponse.nextSaleResponse();
 
@@ -2294,23 +2193,20 @@ namespace Cnp.Sdk.Test.Unit
 
             mockCnpXmlSerializer.Setup(cnpXmlSerializer => cnpXmlSerializer.DeserializeObjectFromFile(It.IsAny<String>())).Returns(mockedCnpResponse);
 
-            Communications mockedCommunication = mockCommunications.Object;
-            cnp.setCommunication(mockedCommunication);
-
             cnpXmlSerializer mockedCnpXmlSerializer = mockCnpXmlSerializer.Object;
-            cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
+            _cnp.setCnpXmlSerializer(mockedCnpXmlSerializer);
 
             cnpFile mockedCnpFile = mockCnpFile.Object;
-            cnp.setCnpFile(mockedCnpFile);
-            cnp.setCnpTime(mockCnpTime.Object);
+            _cnp.setCnpFile(mockedCnpFile);
+            _cnp.setCnpTime(mockCnpTime.Object);
             
             batchRequest cnpBatchRequest = new batchRequest();
             cnpBatchRequest.setCnpFile(mockedCnpFile);
             cnpBatchRequest.setCnpTime(mockCnpTime.Object);
-            cnp.addBatch(cnpBatchRequest);
+            _cnp.addBatch(cnpBatchRequest);
             
-            string batchFileName = cnp.sendToCnp();
-            cnpResponse actualCnpResponse = cnp.receiveFromCnp(batchFileName);
+            string batchFileName = _cnp.sendToCnp();
+            cnpResponse actualCnpResponse = _cnp.receiveFromCnp(batchFileName);
             batchResponse actualCnpBatchResponse = actualCnpResponse.nextBatchResponse();
             saleResponse saleResponse = actualCnpBatchResponse.nextSaleResponse();
             

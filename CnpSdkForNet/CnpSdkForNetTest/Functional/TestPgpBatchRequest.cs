@@ -3,6 +3,10 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using System.IO;
 using System.Linq;
+using Moq;
+using Cnp.Sdk.Interfaces;
+using Cnp.Sdk.Core;
+using System.Net.Http;
 
 namespace Cnp.Sdk.Test.Functional
 {
@@ -11,8 +15,8 @@ namespace Cnp.Sdk.Test.Functional
     {
         private cnpRequest _cnp;
         private Dictionary<string, string> _config;
-        
-        
+        private ICommunications _communications;
+
         [OneTimeSetUp]
         public void SetUp()
         {
@@ -38,14 +42,15 @@ namespace Cnp.Sdk.Test.Functional
             _config["useEncryption"] = "true";
             _config["vantivPublicKeyId"] = Environment.GetEnvironmentVariable("vantivPublicKeyId");
             _config["pgpPassphrase"] = Environment.GetEnvironmentVariable("pgpPassphrase");
+
+            var handler = new CommunicationsHttpClientHandler(_config);
+            _communications = new Communications(new HttpClient(handler), _config);
         }
-        
-        
 
         [Test]
         public void TestSimpleBatchPgp()
         {
-            _cnp = new cnpRequest(_config);
+            _cnp = new cnpRequest(_communications, _config);
             batchRequest cnpBatchRequest = new batchRequest(_config);
             Console.WriteLine("Merchant Id:"+cnpBatchRequest.config["merchantId"]);
             Console.WriteLine("Merchant Username:"+cnpBatchRequest.config["username"]);

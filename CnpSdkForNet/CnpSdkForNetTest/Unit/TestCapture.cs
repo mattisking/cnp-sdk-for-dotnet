@@ -3,20 +3,25 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Moq;
 using System.Text.RegularExpressions;
-
+using Microsoft.Extensions.Logging;
+using Cnp.Sdk.Interfaces;
 
 namespace Cnp.Sdk.Test.Unit
 {
     [TestFixture]
     class TestCapture
     {
-        
-        private CnpOnline cnp;
+        private CnpOnline _cnp;
+        private Mock<ILogger> _mockLogger;
+        private Mock<ICommunications> _mockCommunications;
 
         [OneTimeSetUp]
         public void SetUpCnp()
         {
-            cnp = new CnpOnline();
+            _mockLogger = new Mock<ILogger>();
+            _mockCommunications = new Mock<ICommunications>();
+
+            _cnp = new CnpOnline(_mockCommunications.Object, _mockLogger.Object);
         }
 
         [Test]
@@ -29,14 +34,9 @@ namespace Cnp.Sdk.Test.Unit
             capture.reportGroup = "Planets";
             capture.pin = "1234";
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>\r\n<payPalNotes>note</payPalNotes>\r\n<pin>1234</pin>.*", RegexOptions.Singleline)  ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>\r\n<payPalNotes>note</payPalNotes>\r\n<pin>1234</pin>.*", RegexOptions.Singleline)  ))
                 .Returns("<cnpOnlineResponse version='8.14' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><captureResponse><cnpTxnId>123</cnpTxnId></captureResponse></cnpOnlineResponse>");
-
-            Communications mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            cnp.Capture(capture);
+            _cnp.Capture(capture);
         }
 
         [Test]
@@ -49,14 +49,10 @@ namespace Cnp.Sdk.Test.Unit
             capture.payPalNotes = "note";
             capture.reportGroup = "Planets";
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>\r\n<surchargeAmount>1</surchargeAmount>\r\n<payPalNotes>note</payPalNotes>.*", RegexOptions.Singleline)  ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>\r\n<surchargeAmount>1</surchargeAmount>\r\n<payPalNotes>note</payPalNotes>.*", RegexOptions.Singleline)  ))
                 .Returns("<cnpOnlineResponse version='8.14' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><captureResponse><cnpTxnId>123</cnpTxnId></captureResponse></cnpOnlineResponse>");
 
-            Communications mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            cnp.Capture(capture);
+            _cnp.Capture(capture);
         }
 
         [Test]
@@ -68,14 +64,10 @@ namespace Cnp.Sdk.Test.Unit
             capture.payPalNotes = "note";
             capture.reportGroup = "Planets";
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>\r\n<payPalNotes>note</payPalNotes>.*", RegexOptions.Singleline)  ))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>\r\n<payPalNotes>note</payPalNotes>.*", RegexOptions.Singleline)  ))
                 .Returns("<cnpOnlineResponse version='8.14' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><captureResponse><cnpTxnId>123</cnpTxnId></captureResponse></cnpOnlineResponse>");
 
-            Communications mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            cnp.Capture(capture);
+            _cnp.Capture(capture);
         }
         
         [Test]
@@ -88,14 +80,10 @@ namespace Cnp.Sdk.Test.Unit
             capture.reportGroup = "Planets";
             capture.pin = "1234";
 
-            var mock = new Mock<Communications>();
-
-            mock.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>\r\n<payPalNotes>note</payPalNotes>\r\n<pin>1234</pin>.*", RegexOptions.Singleline)))
+            _mockCommunications.Setup(Communications => Communications.HttpPost(It.IsRegex(".*<amount>2</amount>\r\n<payPalNotes>note</payPalNotes>\r\n<pin>1234</pin>.*", RegexOptions.Singleline)))
                 .Returns("<cnpOnlineResponse version='8.14' response='0' message='Valid Format' xmlns='http://www.vantivcnp.com/schema'><captureResponse><cnpTxnId>123</cnpTxnId><location>sandbox</location></captureResponse></cnpOnlineResponse>");
 
-            Communications mockedCommunication = mock.Object;
-            cnp.SetCommunication(mockedCommunication);
-            var response = cnp.Capture(capture);
+            var response = _cnp.Capture(capture);
             
             Assert.NotNull(response);
             Assert.AreEqual("sandbox", response.location);

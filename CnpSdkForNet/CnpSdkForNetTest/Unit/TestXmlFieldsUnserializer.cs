@@ -3,7 +3,6 @@ using NUnit.Framework;
 using System.Xml.Serialization;
 using System.IO;
 
-
 namespace Cnp.Sdk.Test.Unit
 {
     [TestFixture]

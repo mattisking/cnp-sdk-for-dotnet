@@ -2,7 +2,6 @@
 using NUnit.Framework;
 using System.Text.RegularExpressions;
 
-
 namespace Cnp.Sdk.Test.Unit
 {
     [TestFixture]

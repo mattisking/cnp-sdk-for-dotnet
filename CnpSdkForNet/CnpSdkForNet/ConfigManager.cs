@@ -23,7 +23,6 @@ namespace Cnp.Sdk
             ["merchantId"] = Properties.Settings.Default.merchantId,
             ["password"] = Properties.Settings.Default.password,
             ["proxyPort"] = Properties.Settings.Default.proxyPort,
-            ["logFile"] = Properties.Settings.Default.logFile,
             ["neuterAccountNums"] = Properties.Settings.Default.neuterAccountNums,
             ["sftpUrl"] = Properties.Settings.Default.sftpUrl,
             ["sftpUsername"] = Properties.Settings.Default.sftpUsername,

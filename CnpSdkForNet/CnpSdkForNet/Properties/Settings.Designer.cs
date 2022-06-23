@@ -86,18 +86,6 @@ namespace Cnp.Sdk.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("true")]
-        public string logFile {
-            get {
-                return ((string)(this["logFile"]));
-            }
-            set {
-                this["logFile"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("true")]
         public string neuterAccountNums {
             get {
                 return ((string)(this["neuterAccountNums"]));

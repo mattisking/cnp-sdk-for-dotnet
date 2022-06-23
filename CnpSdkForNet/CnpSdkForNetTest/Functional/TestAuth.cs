@@ -2,6 +2,11 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using System.Threading;
+using Microsoft.Extensions.Logging;
+using Moq;
+using Cnp.Sdk.Interfaces;
+using Cnp.Sdk.Core;
+using System.Net.Http;
 
 namespace Cnp.Sdk.Test.Functional
 {
@@ -9,13 +14,20 @@ namespace Cnp.Sdk.Test.Functional
     internal class TestAuth
     {
         private CnpOnline _cnp;
+        private Mock<ILogger> _mockLogger;
+        private ICommunications _communications;
         private Dictionary<string, string> _config;
 
         [OneTimeSetUp]
         public void SetUpCnp()
         {
+            _mockLogger = new Mock<ILogger>();
             _config = new ConfigManager().getConfig();
-            _cnp = new CnpOnline(_config);
+
+            var handler = new CommunicationsHttpClientHandler(_config);
+            _communications = new Communications(new HttpClient(handler), _config);
+
+            _cnp = new CnpOnline(_communications, _config, _mockLogger.Object);
         }
 
         [Test]

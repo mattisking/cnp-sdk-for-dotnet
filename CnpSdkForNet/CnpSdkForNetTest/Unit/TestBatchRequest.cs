@@ -4,7 +4,9 @@ using System.IO;
 using NUnit.Framework;
 using Moq;
 using System.Text.RegularExpressions;
-
+using Microsoft.Extensions.Logging;
+using Cnp.Sdk.Interfaces;
+using Cnp.Sdk.Core;
 
 namespace Cnp.Sdk.Test.Unit
 {

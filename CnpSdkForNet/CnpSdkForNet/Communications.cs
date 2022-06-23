@@ -15,6 +15,8 @@ using System.Threading.Tasks;
 using Renci.SshNet;
 using Renci.SshNet.Sftp;
 using Renci.SshNet.Common;
+using Cnp.Sdk.Interfaces;
+using Cnp.Sdk.Core;
 
 namespace Cnp.Sdk
 {
@@ -22,13 +24,8 @@ namespace Cnp.Sdk
     /// Communications handles outbound communications with the API
     /// There is a component of this class that deals with HTTP requests (using HttpClient) and one that deals with SFTP
     /// </summary>
-    public class Communications
+    public class Communications : ICommunications
     {
-        /// <summary>
-        ///  Locking object so that writing logs are thread safe
-        /// </summary>
-        private static readonly object SynLock = new object();
-
         public event EventHandler HttpAction;
 
         /// <summary>
@@ -46,77 +43,17 @@ namespace Cnp.Sdk
         /// The main constructor, which initializes the config and HttpClient
         /// </summary>
         /// <param name="config"></param>
-        public Communications(Dictionary<string, string> config = null)
+        public Communications(HttpClient httpClient, Dictionary<string, string> config = null)
         {
             _config = config ?? new ConfigManager().getConfig();
-
-            // On the first initialization of this class, initialize the HttpClient based on the given config
-            if (_client == null)
-            {
-                InitializeHttpClient();
-            }
-        }
-        
-        /// <summary>
-        /// A no-arg constructor that simply calls the main constructor, primarily used for mocking in tests
-        ///   This constructor serves no other purpose than to keep the tests passing
-        /// </summary>
-        public Communications() : this(null) { }
-
-        /// <summary>
-        /// Initializes the http client based on the config
-        /// </summary>
-        private void InitializeHttpClient()
-        {
-            // The handler specifies several fields we need that cannot be directly set on the HttpClient
-            var handler = new HttpClientHandler {SslProtocols = SslProtocols.Tls12};
-
-            // Set the maximum connections for the client, if specified
-            if (IsValidConfigValueSet("maxConnections"))
-            {
-                int.TryParse(_config["maxConnections"], out var maxConnections);
-                if (maxConnections > 0)
-                {
-                    handler.MaxConnectionsPerServer = maxConnections;
-                }
-            }
-
-            // Configure the client to use the proxy, if specified
-            if (IsProxyOn())
-            {
-                handler.Proxy = new WebProxy(_config["proxyHost"], int.Parse(_config["proxyPort"]))
-                {
-                    BypassProxyOnLocal = true
-                };
-                handler.UseProxy = true;
-            }
-
-            // Now that the handler is set up, configure any remaining fields on the HttpClient
-            _client = new HttpClient(handler) {BaseAddress = new Uri(_config["url"])};
-
-            // Set the timeout for the client, if specified
-            if (_config.ContainsKey("timeout"))
-            {
-                // Read timeout from config and default to 60000 (1 minute) if it cannot be parsed
-                var timeoutInMillis = int.TryParse(_config["timeout"], out var temp) ? temp : 60000;
-                _client.Timeout = TimeSpan.FromMilliseconds(timeoutInMillis);
-            }
+            _client = httpClient;
         }
 
-        /// <summary>
-        /// DO NOT USE THIS METHOD UNLESS YOU KNOW WHAT YOU ARE DOING!
-        /// Disposes the HttpClient, allowing for the initialization of a new one.
-        /// This was created for use in testing, and should not be used normally unless a configuration value changed.
-        /// If a configuration value changed, you will need to create a new Communications object with the new config
-        /// immediately for the effects to take place (applies to url, proxy, maxConnections, and timeout settings)
-        /// NPEs may be thrown after calling this method and before creating a new Communications--be warned.
-        /// As such, this method is extremely dangerous in a multi-threaded environment.
-        /// </summary>
-        public static void DisposeHttpClient()
-        {
-            _client?.Dispose();
-            _client = null;
-        }
+        ///// <summary>
+        ///// A no-arg constructor that simply calls the main constructor, primarily used for mocking in tests
+        /////   This constructor serves no other purpose than to keep the tests passing
+        ///// </summary>
+        //public Communications() : this(null) { }
 
         private void OnHttpAction(RequestType requestType, string xmlPayload)
         {
@@ -128,20 +65,20 @@ namespace Cnp.Sdk
             HttpAction(this, new HttpActionEventArgs(requestType, xmlPayload));
         }
 
-        public static bool ValidateServerCertificate(
-             object sender,
-             X509Certificate certificate,
-             X509Chain chain,
-             SslPolicyErrors sslPolicyErrors)
-        {
-            if (sslPolicyErrors == SslPolicyErrors.None)
-                return true;
+        //public static bool ValidateServerCertificate(
+        //     object sender,
+        //     X509Certificate certificate,
+        //     X509Chain chain,
+        //     SslPolicyErrors sslPolicyErrors)
+        //{
+        //    if (sslPolicyErrors == SslPolicyErrors.None)
+        //        return true;
 
-            Console.WriteLine("Certificate error: {0}", sslPolicyErrors);
+        //    Console.WriteLine("Certificate error: {0}", sslPolicyErrors);
 
-            // Do not allow this client to communicate with unauthenticated servers.
-            return false;
-        }
+        //    // Do not allow this client to communicate with unauthenticated servers.
+        //    return false;
+        //}
 
         /// <summary>
         /// Obfuscates account information in the XML, only if the config value specifies to do so
@@ -188,27 +125,6 @@ namespace Cnp.Sdk
         }
 
         /// <summary>
-        /// Logs the specified logMessage to the logFile
-        /// </summary>
-        /// <param name="logMessage">The message to log</param>
-        /// <param name="logFile">The file to write the message to</param>
-        public void Log(string logMessage, string logFile)
-        {
-            lock (SynLock)
-            {
-                NeuterXml(ref logMessage);
-                NeuterUserCredentials(ref logMessage);
- 
-                using (var logWriter = new StreamWriter(logFile, true))
-                {
-                    var time = DateTime.Now;
-                    logWriter.WriteLine(time.ToString(CultureInfo.InvariantCulture));
-                    logWriter.WriteLine(logMessage + "\r\n");
-                }
-            }
-        }
-
-        /// <summary>
         /// Sends a POST request with the given XML to the API, asynchronously
         /// Prefer the use of this method over HttpPost
         /// </summary>
@@ -217,26 +133,25 @@ namespace Cnp.Sdk
         /// <returns>The XML response on success, null otherwise</returns>
         public async Task<string> HttpPostAsync(string xmlRequest, CancellationToken cancellationToken)
         {
-            // First, read values from the config that we need that relate to logging
-            _config.TryGetValue("logFile", out var logFile);
             var printXml = _config.ContainsKey("printxml") && "true".Equals(_config["printxml"]);
 
             // Log any data to the appropriate places, only if we need to
             if (printXml)
             {
                 Console.WriteLine(xmlRequest);
-                Console.WriteLine(logFile);
             }
-            if (logFile != null)
-            {
-                Log(xmlRequest, logFile);
-            }
-            
+
             // Now that we have gotten the values for logging from the config, we need to actually send the request
             try
             {
                 OnHttpAction(RequestType.Request, xmlRequest);
                 var xmlContent = new StringContent(xmlRequest, Encoding.UTF8, "application/xml");
+
+                if (RequireApiKey())
+                {
+                    xmlContent.Headers.Add("apikey", _config["apikey"]);
+                }
+
                 var response = await _client.PostAsync(_config["url"], xmlContent, cancellationToken);
                 var xmlResponse = await response.Content.ReadAsStringAsync();
                 OnHttpAction(RequestType.Response, xmlResponse);
@@ -245,14 +160,10 @@ namespace Cnp.Sdk
                 {
                     Console.WriteLine(xmlResponse);
                 }
-                if (logFile != null)
-                {
-                    Log(xmlResponse, logFile);
-                }
 
                 return xmlResponse;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 return null;
             }
@@ -274,12 +185,12 @@ namespace Cnp.Sdk
         }
 
         /// <summary>
-        /// Determines if the proxy is on based on the object's configuration
+        /// Determines if an apikey is needed based on the object's configuration
         /// </summary>
-        /// <returns>Whether or not a web proxy should be used</returns>
-        public bool IsProxyOn()
+        /// <returns>Whether or not an apikey should be used</returns>
+        public bool RequireApiKey()
         {
-            return IsValidConfigValueSet("proxyHost") && IsValidConfigValueSet("proxyPort");
+            return IsValidConfigValueSet("apiKey");
         }
 
         /// <summary>
@@ -350,10 +261,10 @@ namespace Cnp.Sdk
             }
         }
 
-        public virtual void FtpPoll(string fileName, int timeout, Dictionary<string, string> config)
+        public virtual void FtpPoll(string fileName, int timeout)
         {
             fileName = fileName + ".asc";
-            var printxml = config["printxml"] == "true";
+            var printxml = _config["printxml"] == "true";
             if (printxml)
             {
                 Console.WriteLine("Polling for outbound result file.  Timeout set to " + timeout + "ms. File to wait for is " + fileName);
@@ -361,9 +272,9 @@ namespace Cnp.Sdk
 
             SftpClient sftpClient;
 
-            var url = config["sftpUrl"];
-            var username = config["sftpUsername"];
-            var password = config["sftpPassword"];
+            var url = _config["sftpUrl"];
+            var username = _config["sftpUsername"];
+            var password = _config["sftpPassword"];
 
             sftpClient = new SftpClient(url, username, password);
 

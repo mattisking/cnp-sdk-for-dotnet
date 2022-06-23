@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Cnp.Sdk.Core;
+using Cnp.Sdk.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
@@ -8,47 +10,50 @@ namespace Cnp.Sdk
     // Represent cnpRequest, which contains multiple batches.
     public class cnpRequest
     {
-        private authentication authentication;
-        private Dictionary<string, string> config;
-        private Communications communication;
-        private cnpXmlSerializer cnpXmlSerializer;
-        private int numOfCnpBatchRequest = 0;
-        private int numOfRFRRequest = 0;
-        public string finalFilePath = null;
-        private string batchFilePath = null;
-        private string requestDirectory;
-        private string responseDirectory;
-        private cnpTime cnpTime;
-        private cnpFile cnpFile;
+        private readonly ICommunications _communications;
+
+        private authentication _authentication;
+        private Dictionary<string, string> _config;
+        private cnpXmlSerializer _cnpXmlSerializer;
+        private int _numOfCnpBatchRequest = 0;
+        private int _numOfRFRRequest = 0;
+        public string _finalFilePath = null;
+        private string _batchFilePath = null;
+        private string _requestDirectory;
+        private string _responseDirectory;
+        private cnpTime _cnpTime;
+        private cnpFile _cnpFile;
 
         /**
          * Construct a Cnp online using the configuration specified in CnpSdkForNet.dll.config
          */
-        public cnpRequest()
+        public cnpRequest(ICommunications communications)
         {
-            config = new Dictionary<string, string>();
+            _config = new Dictionary<string, string>();
             ConfigManager configManager = new ConfigManager();
-            config = configManager.getConfig();
+            _config = configManager.getConfig();
+            _communications = communications;
+
             // Retrieve all the settings.
-            //config["url"] = Properties.Settings.Default.url;
-            //config["reportGroup"] = Properties.Settings.Default.reportGroup;
-            //config["username"] = Properties.Settings.Default.username;
-            //config["printxml"] = Properties.Settings.Default.printxml;
-            //config["timeout"] = Properties.Settings.Default.timeout;
-            //config["proxyHost"] = Properties.Settings.Default.proxyHost;
-            //config["merchantId"] = Properties.Settings.Default.merchantId;
-            //config["password"] = Properties.Settings.Default.password;
-            //config["proxyPort"] = Properties.Settings.Default.proxyPort;
-            //config["sftpUrl"] =  Properties.Settings.Default.sftpUrl;
-            //config["sftpUsername"] = Properties.Settings.Default.sftpUsername;
-            //config["sftpPassword"] = Properties.Settings.Default.sftpPassword;
-            //config["onlineBatchUrl"] = Properties.Settings.Default.onlineBatchUrl;
-            //config["onlineBatchPort"] = Properties.Settings.Default.onlineBatchPort;
-            //config["requestDirectory"] = Properties.Settings.Default.requestDirectory;
-            //config["responseDirectory"] = Properties.Settings.Default.responseDirectory;
-            //config["useEncryption"] = Properties.Settings.Default.useEncryption;
-            //config["vantivPublicKeyId"] = Properties.Settings.Default.vantivPublicKeyId;
-            //config["pgpPassphrase"] = Properties.Settings.Default.pgpPassphrase;
+            //_config["url"] = Properties.Settings.Default.url;
+            //_config["reportGroup"] = Properties.Settings.Default.reportGroup;
+            //_config["username"] = Properties.Settings.Default.username;
+            //_config["printxml"] = Properties.Settings.Default.printxml;
+            //_config["timeout"] = Properties.Settings.Default.timeout;
+            //_config["proxyHost"] = Properties.Settings.Default.proxyHost;
+            //_config["merchantId"] = Properties.Settings.Default.merchantId;
+            //_config["password"] = Properties.Settings.Default.password;
+            //_config["proxyPort"] = Properties.Settings.Default.proxyPort;
+            //_config["sftpUrl"] =  Properties.Settings.Default.sftpUrl;
+            //_config["sftpUsername"] = Properties.Settings.Default.sftpUsername;
+            //_config["sftpPassword"] = Properties.Settings.Default.sftpPassword;
+            //_config["onlineBatchUrl"] = Properties.Settings.Default.onlineBatchUrl;
+            //_config["onlineBatchPort"] = Properties.Settings.Default.onlineBatchPort;
+            //_config["requestDirectory"] = Properties.Settings.Default.requestDirectory;
+            //_config["responseDirectory"] = Properties.Settings.Default.responseDirectory;
+            //_config["useEncryption"] = Properties.Settings.Default.useEncryption;
+            //_config["vantivPublicKeyId"] = Properties.Settings.Default.vantivPublicKeyId;
+            //_config["pgpPassphrase"] = Properties.Settings.Default.pgpPassphrase;
 
             initializeRequest();
         }
@@ -76,111 +81,105 @@ namespace Cnp.Sdk
          * requestDirectory
          * responseDirectory
          */
-        public cnpRequest(Dictionary<string, string> config)
+        public cnpRequest(ICommunications communications, Dictionary<string, string> config)
         {
-            this.config = config;
+            _communications = communications;
+            _config = config;
             initializeRequest();
         }
 
         // 
         private void initializeRequest()
         {
-            communication = new Communications(config);
+            _authentication = new authentication();
+            _authentication.user = _config["username"];
+            _authentication.password = _config["password"];
 
-            authentication = new authentication();
-            authentication.user = config["username"];
-            authentication.password = config["password"];
+            _requestDirectory = Path.Combine(_config["requestDirectory"],"Requests") + Path.DirectorySeparatorChar;
+            _responseDirectory = Path.Combine(_config["responseDirectory"],"Responses") + Path.DirectorySeparatorChar;
 
-            requestDirectory = Path.Combine(config["requestDirectory"],"Requests") + Path.DirectorySeparatorChar;
-            responseDirectory = Path.Combine(config["responseDirectory"],"Responses") + Path.DirectorySeparatorChar;
-
-            cnpXmlSerializer = new cnpXmlSerializer();
-            cnpTime = new cnpTime();
-            cnpFile = new cnpFile();
+            _cnpXmlSerializer = new cnpXmlSerializer();
+            _cnpTime = new cnpTime();
+            _cnpFile = new cnpFile();
         }
 
         public authentication getAuthenication()
         {
-            return this.authentication;
+            return _authentication;
         }
 
         public string getRequestDirectory()
         {
-            return this.requestDirectory;
+            return _requestDirectory;
         }
 
         public string getResponseDirectory()
         {
-            return this.responseDirectory;
+            return _responseDirectory;
         }
 
-        public void setCommunication(Communications communication)
+        public ICommunications getCommunication()
         {
-            this.communication = communication;
-        }
-
-        public Communications getCommunication()
-        {
-            return this.communication;
+            return _communications;
         }
 
         public void setCnpXmlSerializer(cnpXmlSerializer cnpXmlSerializer)
         {
-            this.cnpXmlSerializer = cnpXmlSerializer;
+            _cnpXmlSerializer = cnpXmlSerializer;
         }
 
         public cnpXmlSerializer getCnpXmlSerializer()
         {
-            return this.cnpXmlSerializer;
+            return _cnpXmlSerializer;
         }
 
         public void setCnpTime(cnpTime cnpTime)
         {
-            this.cnpTime = cnpTime;
+            _cnpTime = cnpTime;
         }
 
         public cnpTime getCnpTime()
         {
-            return this.cnpTime;
+            return _cnpTime;
         }
 
         public void setCnpFile(cnpFile cnpFile)
         {
-            this.cnpFile = cnpFile;
+            _cnpFile = cnpFile;
         }
 
         public cnpFile getCnpFile()
         {
-            return this.cnpFile;
+            return _cnpFile;
         }
 
         // Add a single batch to batch request.
         public void addBatch(batchRequest cnpBatchRequest)
         {
-            if (numOfRFRRequest != 0)
+            if (_numOfRFRRequest != 0)
             {
                 throw new CnpOnlineException("Can not add a batch request to a batch with an RFRrequest!");
             }
             // Fill in report group attribute for cnpRequest xml element.
             fillInReportGroup(cnpBatchRequest);
             // Add batchRequest xml element into cnpRequest xml element.
-            batchFilePath = SerializeBatchRequestToFile(cnpBatchRequest, batchFilePath);
-            numOfCnpBatchRequest++;
+            _batchFilePath = SerializeBatchRequestToFile(cnpBatchRequest, _batchFilePath);
+            _numOfCnpBatchRequest++;
         }
 
         public void addRFRRequest(RFRRequest rfrRequest)
         {
-            if (numOfCnpBatchRequest != 0)
+            if (_numOfCnpBatchRequest != 0)
             {
                 throw new CnpOnlineException("Can not add an RFRRequest to a batch with requests!");
             }
-            else if (numOfRFRRequest >= 1)
+            else if (_numOfRFRRequest >= 1)
             {
                 throw new CnpOnlineException("Can not add more than one RFRRequest to a batch!");
             }
 
-            batchFilePath = SerializeRFRRequestToFile(rfrRequest, batchFilePath);
-            numOfRFRRequest++;
+            _batchFilePath = SerializeRFRRequestToFile(rfrRequest, _batchFilePath);
+            _numOfRFRRequest++;
         }
 
         //public cnpResponse sendToCnpWithStream()
@@ -196,23 +195,23 @@ namespace Cnp.Sdk
 
         public string sendToCnp()
         {
-            var useEncryption =  config.ContainsKey("useEncryption")? config["useEncryption"] : "false";
-            var vantivPublicKeyId = config.ContainsKey("vantivPublicKeyId")? config["vantivPublicKeyId"] : "";
+            var useEncryption = _config.ContainsKey("useEncryption")? _config["useEncryption"] : "false";
+            var vantivPublicKeyId = _config.ContainsKey("vantivPublicKeyId")? _config["vantivPublicKeyId"] : "";
             
             var requestFilePath = this.Serialize();
-            var batchRequestDir = requestDirectory;
+            var batchRequestDir = _requestDirectory;
             var finalRequestFilePath = requestFilePath;
             if ("true".Equals(useEncryption))
             {
-                batchRequestDir = Path.Combine(requestDirectory, "encrypted");
+                batchRequestDir = Path.Combine(_requestDirectory, "encrypted");
                 Console.WriteLine(batchRequestDir);
                 finalRequestFilePath =
                     Path.Combine(batchRequestDir, Path.GetFileName(requestFilePath) + ".encrypted");
-                cnpFile.createDirectory(finalRequestFilePath);
+                _cnpFile.createDirectory(finalRequestFilePath);
                 PgpHelper.EncryptFile(requestFilePath, finalRequestFilePath, vantivPublicKeyId);
             }
-            
-            communication.FtpDropOff(batchRequestDir, Path.GetFileName(finalRequestFilePath));
+
+            _communications.FtpDropOff(batchRequestDir, Path.GetFileName(finalRequestFilePath));
             
             return Path.GetFileName(finalRequestFilePath);
         }
@@ -220,28 +219,28 @@ namespace Cnp.Sdk
 
         public void blockAndWaitForResponse(string fileName, int timeOut)
         {
-            communication.FtpPoll(fileName, timeOut, config);
+            _communications.FtpPoll(fileName, timeOut);
         }
 
         public cnpResponse receiveFromCnp(string batchFileName)
         {
-            var useEncryption =  config.ContainsKey("useEncryption")? config["useEncryption"] : "false";
-            var pgpPassphrase = config.ContainsKey("pgpPassphrase")? config["pgpPassphrase"] : "";
+            var useEncryption = _config.ContainsKey("useEncryption")? _config["useEncryption"] : "false";
+            var pgpPassphrase = _config.ContainsKey("pgpPassphrase")? _config["pgpPassphrase"] : "";
+
+            _cnpFile.createDirectory(_responseDirectory);
             
-            cnpFile.createDirectory(responseDirectory);
-            
-            var responseFilePath = Path.Combine(responseDirectory, batchFileName);
-            var batchResponseDir = responseDirectory;
+            var responseFilePath = Path.Combine(_responseDirectory, batchFileName);
+            var batchResponseDir = _responseDirectory;
             var finalResponseFilePath = responseFilePath;
 
             if ("true".Equals(useEncryption))
             {
-                batchResponseDir = Path.Combine(responseDirectory, "encrypted");
+                batchResponseDir = Path.Combine(_responseDirectory, "encrypted");
                 finalResponseFilePath =
                     Path.Combine(batchResponseDir, batchFileName);
-                cnpFile.createDirectory(finalResponseFilePath);
+                _cnpFile.createDirectory(finalResponseFilePath);
             }
-            communication.FtpPickUp(finalResponseFilePath, batchFileName);
+            _communications.FtpPickUp(finalResponseFilePath, batchFileName);
 
             if ("true".Equals(useEncryption))
             {
@@ -249,7 +248,7 @@ namespace Cnp.Sdk
                 PgpHelper.DecryptFile(finalResponseFilePath, responseFilePath, pgpPassphrase);
             }
 
-            var cnpResponse = (cnpResponse)cnpXmlSerializer.DeserializeObjectFromFile(responseFilePath);
+            var cnpResponse = _cnpXmlSerializer.DeserializeObjectFromFile(responseFilePath);
                         
             return cnpResponse;
         }
@@ -259,21 +258,21 @@ namespace Cnp.Sdk
         {
             // Create cnpRequest xml file if not exist.
             // Otherwise, the xml file created, thus storing some batch requests.
-            filePath = cnpFile.createRandomFile(requestDirectory, Path.GetFileName(filePath), "_temp_cnpRequest.xml", cnpTime);
+            filePath = _cnpFile.createRandomFile(_requestDirectory, Path.GetFileName(filePath), "_temp_cnpRequest.xml", _cnpTime);
             // Serializing the batchRequest creates an xml for that batch request and returns the path to it.
             var tempFilePath = cnpBatchRequest.Serialize();
             // Append the batch request xml just created to the accummulating cnpRequest xml file.
-            cnpFile.AppendFileToFile(filePath, tempFilePath);
+            _cnpFile.AppendFileToFile(filePath, tempFilePath);
             // Return the path to temp xml file.
             return filePath;
         }
 
         public string SerializeRFRRequestToFile(RFRRequest rfrRequest, string filePath)
         {
-            filePath = cnpFile.createRandomFile(requestDirectory, Path.GetFileName(filePath), "_temp_cnpRequest.xml", cnpTime);
+            filePath = _cnpFile.createRandomFile(_requestDirectory, Path.GetFileName(filePath), "_temp_cnpRequest.xml", _cnpTime);
             var tempFilePath = rfrRequest.Serialize();
 
-            cnpFile.AppendFileToFile(filePath, tempFilePath);
+            _cnpFile.AppendFileToFile(filePath, tempFilePath);
 
             return filePath;
         }
@@ -283,33 +282,33 @@ namespace Cnp.Sdk
         {
             var xmlHeader = "<?xml version='1.0' encoding='utf-8'?>\r\n<cnpRequest version=\"" + CnpVersion.CurrentCNPXMLVersion + "\"" +
              " xmlns=\"http://www.vantivcnp.com/schema\" " +
-             "numBatchRequests=\"" + numOfCnpBatchRequest + "\">";
+             "numBatchRequests=\"" + _numOfCnpBatchRequest + "\">";
 
             var xmlFooter = "\r\n</cnpRequest>";
 
             // Create the Session file.
-            finalFilePath = cnpFile.createRandomFile(requestDirectory, Path.GetFileName(finalFilePath), ".xml", cnpTime);
-            var filePath = finalFilePath;
+            _finalFilePath = _cnpFile.createRandomFile(_requestDirectory, Path.GetFileName(_finalFilePath), ".xml", _cnpTime);
+            var filePath = _finalFilePath;
 
             // Add the header into the Session file.
-            cnpFile.AppendLineToFile(finalFilePath, xmlHeader);
+            _cnpFile.AppendLineToFile(_finalFilePath, xmlHeader);
             // Add authentication.
-            cnpFile.AppendLineToFile(finalFilePath, authentication.Serialize());
+            _cnpFile.AppendLineToFile(_finalFilePath, _authentication.Serialize());
 
             // batchFilePath is not null when some batch is added into the batch request.
-            if (batchFilePath != null)
+            if (_batchFilePath != null)
             {
-                cnpFile.AppendFileToFile(finalFilePath, batchFilePath);
+                _cnpFile.AppendFileToFile(_finalFilePath, _batchFilePath);
             }
             else
             {
                 throw new CnpOnlineException("No batch was added to the CnpBatch!");
             }
-            
-            // Add the footer into Session file
-            cnpFile.AppendLineToFile(finalFilePath, xmlFooter);
 
-            finalFilePath = null;
+            // Add the footer into Session file
+            _cnpFile.AppendLineToFile(_finalFilePath, xmlFooter);
+
+            _finalFilePath = null;
 
             return filePath;
         }
@@ -318,7 +317,7 @@ namespace Cnp.Sdk
         {
             if (cnpBatchRequest.reportGroup == null)
             {
-                cnpBatchRequest.reportGroup = config["reportGroup"];
+                cnpBatchRequest.reportGroup = _config["reportGroup"];
             }
         }
 

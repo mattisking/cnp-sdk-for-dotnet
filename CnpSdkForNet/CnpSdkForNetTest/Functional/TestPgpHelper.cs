@@ -2,6 +2,7 @@
 using NUnit.Framework;
 using System.IO;
 using System.Linq;
+using Cnp.Sdk.Core;
 
 namespace Cnp.Sdk.Test.Functional
 {

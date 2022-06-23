@@ -3,6 +3,7 @@ using System.Text;
 using System.IO;
 using System.Xml.Serialization;
 using System.Xml;
+using Cnp.Sdk.Core;
 
 namespace Cnp.Sdk
 {

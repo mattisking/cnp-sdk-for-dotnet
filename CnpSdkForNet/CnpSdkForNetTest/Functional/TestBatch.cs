@@ -2,6 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using NUnit.Framework;
+using Moq;
+using Cnp.Sdk.Interfaces;
+using Cnp.Sdk.Core;
+using System.Net.Http;
 
 namespace Cnp.Sdk.Test.Functional
 {
@@ -9,6 +13,7 @@ namespace Cnp.Sdk.Test.Functional
     class TestBatch
     {
         private cnpRequest _cnp;
+        private ICommunications _communications;
         private Dictionary<string, string> _invalidConfig;
         private Dictionary<string, string> _invalidSftpConfig;
         private static readonly string tempDirectroyPath = Path.Combine(Path.GetTempPath(),"NET" + CnpVersion.CurrentCNPXMLVersion) + Path.DirectorySeparatorChar;
@@ -40,7 +45,11 @@ namespace Cnp.Sdk.Test.Functional
             Dictionary<String,String> config = new ConfigManager().getConfig();
             config["requestDirectory"] = tempDirectroyPath + "BatchRequests";
             config["responseDirectory"] = tempDirectroyPath + "BatchResponses";
-            _cnp = new cnpRequest(config);
+
+            var handler = new CommunicationsHttpClientHandler(config);
+            _communications = new Communications(new HttpClient(handler), config);
+
+            _cnp = new cnpRequest(_communications, config);
         }
 
         [Test]
@@ -679,7 +688,7 @@ namespace Cnp.Sdk.Test.Functional
                 cnpBatchResponse = cnpResponse.nextBatchResponse();
             }
 
-            var cnpRfr = new cnpRequest();
+            var cnpRfr = new cnpRequest(_communications);
             var rfrRequest = new RFRRequest();
             var accountUpdateFileRequestData = new accountUpdateFileRequestData();
             accountUpdateFileRequestData.merchantId = Properties.Settings.Default.merchantId;
@@ -940,7 +949,7 @@ namespace Cnp.Sdk.Test.Functional
         [Test]
         public void InvalidCredientialsBatch()
         {
-            var cnpIC = new cnpRequest(_invalidConfig);
+            var cnpIC = new cnpRequest(_communications, _invalidConfig);
 
             var cnpBatchRequest = new batchRequest();
 
@@ -1233,7 +1242,7 @@ namespace Cnp.Sdk.Test.Functional
         [Test]
         public void InvalidSftpCredientialsBatch()
         {
-            var cnpIsc = new cnpRequest(_invalidSftpConfig);
+            var cnpIsc = new cnpRequest(_communications, _invalidSftpConfig);
 
             var cnpBatchRequest = new batchRequest();
 
