@@ -1,8 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CnpSdkForNet", "CnpSdkForNet\CnpSdkForNet.csproj", "{CAF980F6-9678-4986-BCC2-73AEA307309B}"
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32519.379
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CnpSdkForNet", "CnpSdkForNet\CnpSdkForNet.csproj", "{CAF980F6-9678-4986-BCC2-73AEA307309B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CnpSdkForNetTest", "CnpSdkForNetTest\CnpSdkForNetTest.csproj", "{75819D25-98CD-43C8-806B-5BD3984F6601}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CnpSdkForNetTest", "CnpSdkForNetTest\CnpSdkForNetTest.csproj", "{75819D25-98CD-43C8-806B-5BD3984F6601}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SampleApp", "New folder\SampleApp\SampleApp.csproj", "{1AD389FA-1DBA-4726-AC8D-856A8ACA522A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -18,5 +23,15 @@ Global
 		{75819D25-98CD-43C8-806B-5BD3984F6601}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{75819D25-98CD-43C8-806B-5BD3984F6601}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{75819D25-98CD-43C8-806B-5BD3984F6601}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1AD389FA-1DBA-4726-AC8D-856A8ACA522A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1AD389FA-1DBA-4726-AC8D-856A8ACA522A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1AD389FA-1DBA-4726-AC8D-856A8ACA522A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1AD389FA-1DBA-4726-AC8D-856A8ACA522A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E361CFBA-38DF-4935-BDD1-E2FC515C233F}
 	EndGlobalSection
 EndGlobal
