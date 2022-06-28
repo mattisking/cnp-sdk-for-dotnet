@@ -24,7 +24,7 @@ namespace Cnp.Sdk
         private readonly ICommunications _communications;
 
         // Use a logger extension to allow any kind of logging
-        private readonly ILogger _logger;
+        private readonly ILogger<CnpOnline> _logger;
 
         // exposed merchantId for organizations with multiple Merchant Ids.
         private string _merchantId;
@@ -58,13 +58,13 @@ namespace Cnp.Sdk
          * - maxConnections
          * These values *cannot* be changed for the lifetime of the application
          */
-        public CnpOnline(ICommunications communications, ILogger logger) : this(communications, new ConfigManager().getConfig(), logger)
+        public CnpOnline(ICommunications communications, ILogger<CnpOnline> logger) : this(communications, new ConfigManager().getConfig(), logger)
         {
             _logger = logger;
             _communications = communications;
         }
 
-        public CnpOnline(ICommunications communications, CnpOnlineConfig config, ILogger logger)
+        public CnpOnline(ICommunications communications, CnpOnlineConfig config, ILogger<CnpOnline> logger)
         {
             _config = config;
             _logger = logger;
@@ -1101,10 +1101,9 @@ namespace Cnp.Sdk
             try
             {
                 var cnpOnlineResponse = DeserializeObject(xmlResponse);
-                if (_config.Printxml)
-                {
-                    Console.WriteLine(cnpOnlineResponse.response);
-                }
+
+                _logger.LogDebug(cnpOnlineResponse.response);
+
                 if (!"0".Equals(cnpOnlineResponse.response))
                 {
                     if ("2".Equals(cnpOnlineResponse.response) || "3".Equals(cnpOnlineResponse.response))

@@ -1,6 +1,7 @@
 ﻿using Cnp.Sdk.Configuration;
 using Cnp.Sdk.Core;
 using Cnp.Sdk.Interfaces;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,6 +13,7 @@ namespace Cnp.Sdk
     public class cnpRequest
     {
         private readonly ICommunications _communications;
+        private readonly ILogger<cnpRequest> _logger;
 
         private authentication _authentication;
         private CnpOnlineConfig _config;
@@ -28,12 +30,13 @@ namespace Cnp.Sdk
         /**
          * Construct a Cnp online using the configuration specified in CnpSdkForNet.dll.config
          */
-        public cnpRequest(ICommunications communications)
+        public cnpRequest(ICommunications communications, ILogger<cnpRequest> logger)
         {
             _config = new CnpOnlineConfig();
             ConfigManager configManager = new ConfigManager();
             _config = configManager.getConfig();
             _communications = communications;
+            _logger = logger;
 
             // Retrieve all the settings.
             //_config["url"] = Properties.Settings.Default.url;
@@ -82,14 +85,15 @@ namespace Cnp.Sdk
          * requestDirectory
          * responseDirectory
          */
-        public cnpRequest(ICommunications communications, CnpOnlineConfig config)
+        public cnpRequest(ICommunications communications, CnpOnlineConfig config, ILogger<cnpRequest> logger)
         {
             _communications = communications;
             _config = config;
+            _logger = logger;
+
             initializeRequest();
         }
 
-        // 
         private void initializeRequest()
         {
             _authentication = new authentication();
@@ -202,7 +206,7 @@ namespace Cnp.Sdk
             if (_config.UseEncryption)
             {
                 batchRequestDir = Path.Combine(_requestDirectory, "encrypted");
-                Console.WriteLine(batchRequestDir);
+                _logger.LogDebug(batchRequestDir);
                 finalRequestFilePath =
                     Path.Combine(batchRequestDir, Path.GetFileName(requestFilePath) + ".encrypted");
                 _cnpFile.createDirectory(finalRequestFilePath);

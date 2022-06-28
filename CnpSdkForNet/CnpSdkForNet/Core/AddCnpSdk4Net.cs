@@ -29,7 +29,7 @@ namespace Cnp.Sdk.Core
 
             services.AddSingleton<ICnpOnline, CnpOnline>(sp =>
             {
-                var communications = sp.GetRequiredService<ICommunications>();
+                var communications = sp.GetService<ICommunications>();
                 var logger = sp.GetService<ILoggerFactory>()
                     .CreateLogger<CnpOnline>();
                 var config = sp.GetService<CnpOnlineConfig>();

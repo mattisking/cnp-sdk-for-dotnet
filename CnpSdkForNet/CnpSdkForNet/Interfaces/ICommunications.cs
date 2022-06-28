@@ -25,5 +25,8 @@ namespace Cnp.Sdk.Interfaces
         void FtpPoll(string fileName, int timeout);
 
         void FtpPickUp(string destinationFilePath, string fileName);
+
+        bool ValidateServerCertificate(object sender, X509Certificate certificate,
+             X509Chain chain, SslPolicyErrors sslPolicyErrors);
     }
 }

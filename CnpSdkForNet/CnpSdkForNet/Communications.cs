@@ -18,6 +18,7 @@ using Renci.SshNet.Common;
 using Cnp.Sdk.Interfaces;
 using Cnp.Sdk.Core;
 using Cnp.Sdk.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Cnp.Sdk
 {
@@ -40,21 +41,19 @@ namespace Cnp.Sdk
         /// </summary>
         private readonly CnpOnlineConfig _config;
 
+        // Use a logger extension to allow any kind of logging
+        private readonly ILogger<Communications> _logger;
+
         /// <summary>
         /// The main constructor, which initializes the config and HttpClient
         /// </summary>
         /// <param name="config"></param>
-        public Communications(HttpClient httpClient, CnpOnlineConfig config = null)
+        public Communications(HttpClient httpClient, ILogger<Communications> logger, CnpOnlineConfig config = null)
         {
             _config = config ?? new ConfigManager().getConfig();
             _client = httpClient;
+            _logger = logger;
         }
-
-        ///// <summary>
-        ///// A no-arg constructor that simply calls the main constructor, primarily used for mocking in tests
-        /////   This constructor serves no other purpose than to keep the tests passing
-        ///// </summary>
-        //public Communications() : this(null) { }
 
         private void OnHttpAction(RequestType requestType, string xmlPayload)
         {
@@ -66,20 +65,20 @@ namespace Cnp.Sdk
             HttpAction(this, new HttpActionEventArgs(requestType, xmlPayload));
         }
 
-        //public static bool ValidateServerCertificate(
-        //     object sender,
-        //     X509Certificate certificate,
-        //     X509Chain chain,
-        //     SslPolicyErrors sslPolicyErrors)
-        //{
-        //    if (sslPolicyErrors == SslPolicyErrors.None)
-        //        return true;
+        public bool ValidateServerCertificate(
+             object sender,
+             X509Certificate certificate,
+             X509Chain chain,
+             SslPolicyErrors sslPolicyErrors)
+        {
+            if (sslPolicyErrors == SslPolicyErrors.None)
+                return true;
 
-        //    Console.WriteLine("Certificate error: {0}", sslPolicyErrors);
+            _logger.LogDebug($"Certificate error: {sslPolicyErrors}");
 
-        //    // Do not allow this client to communicate with unauthenticated servers.
-        //    return false;
-        //}
+            // Do not allow this client to communicate with unauthenticated servers.
+            return false;
+        }
 
         /// <summary>
         /// Obfuscates account information in the XML, only if the config value specifies to do so
@@ -131,10 +130,7 @@ namespace Cnp.Sdk
         public async Task<string> HttpPostAsync(string xmlRequest, CancellationToken cancellationToken)
         {
             // Log any data to the appropriate places, only if we need to
-            if (_config.Printxml)
-            {
-                Console.WriteLine(xmlRequest);
-            }
+            _logger.LogDebug(xmlRequest);
 
             // Now that we have gotten the values for logging from the config, we need to actually send the request
             try
@@ -151,10 +147,7 @@ namespace Cnp.Sdk
                 var xmlResponse = await response.Content.ReadAsStringAsync();
                 OnHttpAction(RequestType.Response, xmlResponse);
 
-                if (_config.Printxml)
-                {
-                    Console.WriteLine(xmlResponse);
-                }
+                _logger.LogDebug(xmlResponse);
 
                 return xmlResponse;
             }
@@ -185,12 +178,9 @@ namespace Cnp.Sdk
 
             var filePath = Path.Combine(fileDirectory, fileName);
 
-            if (_config.Printxml)
-            {
-                Console.WriteLine("Sftp Url: " + _config.SftpUrl);
-                Console.WriteLine("Username: " + _config.SftpPassword);
-                // Console.WriteLine("Password: " + _config.SftpPassword);
-            }
+            _logger.LogDebug($"Sftp Url: {_config.SftpUrl}");
+            _logger.LogDebug($"Username: {_config.SftpUsername}");
+            //_logger.LogDebug($"Password: {_config.SftpPassword}");
 
             sftpClient = new SftpClient(_config.SftpUrl, _config.SftpUsername, _config.SftpPassword);
 
@@ -208,19 +198,15 @@ namespace Cnp.Sdk
             }
 
             try {
-                if (_config.Printxml) {
-                    Console.WriteLine("Dropping off local file " + filePath + " to inbound/" + fileName + ".prg");
-                }
+                _logger.LogInformation($"Dropping off local file {filePath} to inbound/{fileName}.prg");
 
                 FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite);
                 sftpClient.UploadFile(fileStream, "inbound/" + fileName + ".prg");
                 fileStream.Close();
-                if (_config.Printxml) {
-                    Console.WriteLine("File copied - renaming from inbound/" + fileName + ".prg to inbound/" +
-                                      fileName + ".asc");
-                }
 
-                sftpClient.RenameFile("inbound/" + fileName + ".prg", "inbound/" + fileName + ".asc");
+                _logger.LogInformation($"File copied - renaming from inbound/ {fileName}.prg to inbound/ {fileName}.asc"); 
+
+                sftpClient.RenameFile($"inbound/{fileName}.prg", $"inbound/{fileName}.asc");
             }
             catch (SshConnectionException e) {
                 throw new CnpOnlineException("Error occured while attempting to upload and save the file to SFTP", e);
@@ -236,10 +222,7 @@ namespace Cnp.Sdk
         public virtual void FtpPoll(string fileName, int timeout)
         {
             fileName = fileName + ".asc";
-            if (_config.Printxml)
-            {
-                Console.WriteLine("Polling for outbound result file.  Timeout set to " + timeout + "ms. File to wait for is " + fileName);
-            }
+            _logger.LogDebug($"Polling for outbound result file.  Timeout set to {timeout}ms. File to wait for is {fileName}");
 
             SftpClient sftpClient;
 
@@ -265,32 +248,23 @@ namespace Cnp.Sdk
             stopWatch.Start();
             do
             {
-                if (_config.Printxml)
-                {
-                    Console.WriteLine("Elapsed time is " + stopWatch.Elapsed.TotalMilliseconds);
-                }
+                _logger.LogDebug($"Elapsed time is {stopWatch.Elapsed.TotalMilliseconds}");
+
                 try
                 {
                     sftpAttrs = sftpClient.Get("outbound/" + fileName).Attributes;
-                    if (_config.Printxml)
-                    {
-                        Console.WriteLine("Attrs of file are: " + getSftpFileAttributes(sftpAttrs));
-                    }
+                    _logger.LogDebug($"Attrs of file are: {getSftpFileAttributes(sftpAttrs)}");
                 }
                 catch (SshConnectionException e)
                 {
-                    if (_config.Printxml)
-                    {
-                        Console.WriteLine(e.Message);
-                    }
+                    _logger.LogDebug(e.Message);
+
                     System.Threading.Thread.Sleep(30000);
                 }
                 catch (SftpPathNotFoundException e)
                 {
-                    if (_config.Printxml)
-                    {
-                        Console.WriteLine(e.Message);
-                    }
+                    _logger.LogDebug(e.Message);
+
                     System.Threading.Thread.Sleep(30000);
                 }
             } while (sftpAttrs == null && stopWatch.Elapsed.TotalMilliseconds <= timeout);
@@ -315,17 +289,14 @@ namespace Cnp.Sdk
             }
 
             try {
-                if (_config.Printxml) {
-                    Console.WriteLine("Picking up remote file outbound/" + fileName + ".asc");
-                    Console.WriteLine("Putting it at " + destinationFilePath);
-                }
+                _logger.LogDebug($"Picking up remote file outbound/{fileName}.asc");
+                _logger.LogDebug($"Putting it at {destinationFilePath}");
 
                 FileStream downloadStream = new FileStream(destinationFilePath, FileMode.Create, FileAccess.ReadWrite);
                 sftpClient.DownloadFile("outbound/" + fileName + ".asc", downloadStream);
                 downloadStream.Close();
-                if (_config.Printxml) {
-                    Console.WriteLine("Removing remote file output/" + fileName + ".asc");
-                }
+
+                _logger.LogDebug($"Removing remote file output/{fileName}.asc");
 
                 sftpClient.Delete("outbound/" + fileName + ".asc");
             }
@@ -358,14 +329,15 @@ namespace Cnp.Sdk
             }
         }
 
-        private String getSftpFileAttributes(SftpFileAttributes sftpAttrs)
+        private string getSftpFileAttributes(SftpFileAttributes sftpAttrs)
         {
-            String permissions = sftpAttrs.GetBytes().ToString();
-            return "Permissions: " + permissions
-                                   + " | UserID: " + sftpAttrs.UserId
-                                   + " | GroupID: " + sftpAttrs.GroupId
-                                   + " | Size: " + sftpAttrs.Size
-                                   + " | LastEdited: " + sftpAttrs.LastWriteTime.ToString();
+            var permissions = sftpAttrs.GetBytes().ToString();
+
+            return $@"Permissions: {permissions} 
+                | UserID: {sftpAttrs.UserId} 
+                | GroupID: {sftpAttrs.GroupId} 
+                | Size: {sftpAttrs.Size} 
+                | LastEdited: {sftpAttrs.LastWriteTime.ToString()}";
         }
 
         public struct SshConnectionInfo

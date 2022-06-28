@@ -19,9 +19,6 @@ namespace Cnp.Sdk
             Url = Properties.Settings.Default.url,
             ReportGroup = Properties.Settings.Default.reportGroup,
             Username = Properties.Settings.Default.username,
-            Printxml = Properties.Settings.Default.printxml != null ?
-                Boolean.Parse(Properties.Settings.Default.printxml) :
-                false,
             Timeout = Properties.Settings.Default.timeout != null ?
                 Int32.Parse(Properties.Settings.Default.timeout) :
                 60000,

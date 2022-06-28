@@ -8,6 +8,7 @@ using Cnp.Sdk.Interfaces;
 using System.Threading;
 using System.Threading.Tasks;
 using System;
+using System.Text.Json;
 
 namespace SampleApp
 {
@@ -53,6 +54,8 @@ namespace SampleApp
             };
 
             var response = await cnpOnline.CreditAsync(creditRequest, new CancellationToken());
+
+            Console.WriteLine(JsonSerializer.Serialize(response, new JsonSerializerOptions() { WriteIndented = true }));
 
             Console.ReadLine();
         }

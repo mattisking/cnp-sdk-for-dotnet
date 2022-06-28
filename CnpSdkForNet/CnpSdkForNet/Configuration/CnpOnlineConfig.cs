@@ -9,7 +9,6 @@ namespace Cnp.Sdk.Configuration
         public string Url { get; set; }
         public string ReportGroup { get; set; }
         public string Username { get; set; }
-        public bool Printxml { get; set; }
         public int Timeout { get; set; }
         public string ProxyHost { get; set; }
         public string MerchantId { get; set; }
