@@ -81,7 +81,7 @@ namespace Cnp.Sdk.Test.Functional
             public PerformanceTest(long idNumber)
             {
                 threadId = idNumber;
-                Dictionary<string, string> config = new Dictionary<string, string>();
+                CnpOnlineConfig config = new CnpOnlineConfig();
 
                 _mockLogger = new Mock<ILogger>();
                 _mockCommunications = new Mock<ICommunications>();

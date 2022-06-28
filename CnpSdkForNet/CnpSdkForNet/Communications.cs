@@ -17,6 +17,7 @@ using Renci.SshNet.Sftp;
 using Renci.SshNet.Common;
 using Cnp.Sdk.Interfaces;
 using Cnp.Sdk.Core;
+using Cnp.Sdk.Configuration;
 
 namespace Cnp.Sdk
 {
@@ -37,13 +38,13 @@ namespace Cnp.Sdk
         /// <summary>
         /// The configuration dictionary containing logging, proxy, and other various properties
         /// </summary>
-        private readonly Dictionary<string, string> _config;
+        private readonly CnpOnlineConfig _config;
 
         /// <summary>
         /// The main constructor, which initializes the config and HttpClient
         /// </summary>
         /// <param name="config"></param>
-        public Communications(HttpClient httpClient, Dictionary<string, string> config = null)
+        public Communications(HttpClient httpClient, CnpOnlineConfig config = null)
         {
             _config = config ?? new ConfigManager().getConfig();
             _client = httpClient;
@@ -86,9 +87,7 @@ namespace Cnp.Sdk
         /// <param name="inputXml">the XML to obfuscate</param>
         public void NeuterXml(ref string inputXml)
         {
-            var neuterAccountNumbers = 
-                _config.ContainsKey("neuterAccountNums") && "true".Equals(_config["neuterAccountNums"]);
-            if (!neuterAccountNumbers) return;
+            if (!_config.NeuterAccountNums) return;
             
             const string pattern1 = "(?i)<number>.*?</number>";
             const string pattern2 = "(?i)<accNum>.*?</accNum>";
@@ -111,9 +110,7 @@ namespace Cnp.Sdk
         /// <param name="inputXml">the XML to obfuscate</param>
         public void NeuterUserCredentials(ref string inputXml)
         {
-            var neuterUserCredentials =
-                _config.ContainsKey("neuterUserCredentials") && "true".Equals(_config["neuterUserCredentials"]);
-            if (!neuterUserCredentials) return;
+            if (!_config.NeuterUserCredentials) return;
 
             const string pattern1 = "(?i)<user>.*?</user>";
             const string pattern2 = "(?i)<password>.*?</password>";
@@ -133,10 +130,8 @@ namespace Cnp.Sdk
         /// <returns>The XML response on success, null otherwise</returns>
         public async Task<string> HttpPostAsync(string xmlRequest, CancellationToken cancellationToken)
         {
-            var printXml = _config.ContainsKey("printxml") && "true".Equals(_config["printxml"]);
-
             // Log any data to the appropriate places, only if we need to
-            if (printXml)
+            if (_config.Printxml)
             {
                 Console.WriteLine(xmlRequest);
             }
@@ -147,16 +142,16 @@ namespace Cnp.Sdk
                 OnHttpAction(RequestType.Request, xmlRequest);
                 var xmlContent = new StringContent(xmlRequest, Encoding.UTF8, "application/xml");
 
-                if (RequireApiKey())
+                if (String.IsNullOrEmpty(_config.Apikey) == false)
                 {
-                    xmlContent.Headers.Add("apikey", _config["apikey"]);
+                    xmlContent.Headers.Add("apikey", _config.Apikey);
                 }
 
-                var response = await _client.PostAsync(_config["url"], xmlContent, cancellationToken);
+                var response = await _client.PostAsync(_config.Url, xmlContent, cancellationToken);
                 var xmlResponse = await response.Content.ReadAsStringAsync();
                 OnHttpAction(RequestType.Response, xmlResponse);
 
-                if (printXml)
+                if (_config.Printxml)
                 {
                     Console.WriteLine(xmlResponse);
                 }
@@ -184,43 +179,20 @@ namespace Cnp.Sdk
             return asyncTask.Result;
         }
 
-        /// <summary>
-        /// Determines if an apikey is needed based on the object's configuration
-        /// </summary>
-        /// <returns>Whether or not an apikey should be used</returns>
-        public bool RequireApiKey()
-        {
-            return IsValidConfigValueSet("apiKey");
-        }
-
-        /// <summary>
-        /// Determines whether the specified parameter is properly set in the configuration
-        /// </summary>
-        /// <param name="propertyName">The property to check for in the config</param>
-        /// <returns>Whether or not propertyName is properly set in _config</returns>
-        public bool IsValidConfigValueSet(string propertyName)
-        {
-            return _config.ContainsKey(propertyName) && !string.IsNullOrEmpty(_config[propertyName]);
-        }
-
         public virtual void FtpDropOff(string fileDirectory, string fileName)
         {
             SftpClient sftpClient;
 
-            var url = _config["sftpUrl"];
-            var username = _config["sftpUsername"];
-            var password = _config["sftpPassword"];
             var filePath = Path.Combine(fileDirectory, fileName);
 
-            var printxml = _config["printxml"] == "true";
-            if (printxml)
+            if (_config.Printxml)
             {
-                Console.WriteLine("Sftp Url: " + url);
-                Console.WriteLine("Username: " + username);
-                // Console.WriteLine("Password: " + password);
+                Console.WriteLine("Sftp Url: " + _config.SftpUrl);
+                Console.WriteLine("Username: " + _config.SftpPassword);
+                // Console.WriteLine("Password: " + _config.SftpPassword);
             }
 
-            sftpClient = new SftpClient(url, username, password);
+            sftpClient = new SftpClient(_config.SftpUrl, _config.SftpUsername, _config.SftpPassword);
 
             try
             {
@@ -236,14 +208,14 @@ namespace Cnp.Sdk
             }
 
             try {
-                if (printxml) {
+                if (_config.Printxml) {
                     Console.WriteLine("Dropping off local file " + filePath + " to inbound/" + fileName + ".prg");
                 }
 
                 FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite);
                 sftpClient.UploadFile(fileStream, "inbound/" + fileName + ".prg");
                 fileStream.Close();
-                if (printxml) {
+                if (_config.Printxml) {
                     Console.WriteLine("File copied - renaming from inbound/" + fileName + ".prg to inbound/" +
                                       fileName + ".asc");
                 }
@@ -264,19 +236,14 @@ namespace Cnp.Sdk
         public virtual void FtpPoll(string fileName, int timeout)
         {
             fileName = fileName + ".asc";
-            var printxml = _config["printxml"] == "true";
-            if (printxml)
+            if (_config.Printxml)
             {
                 Console.WriteLine("Polling for outbound result file.  Timeout set to " + timeout + "ms. File to wait for is " + fileName);
             }
 
             SftpClient sftpClient;
 
-            var url = _config["sftpUrl"];
-            var username = _config["sftpUsername"];
-            var password = _config["sftpPassword"];
-
-            sftpClient = new SftpClient(url, username, password);
+            sftpClient = new SftpClient(_config.SftpUrl, _config.SftpUsername, _config.SftpPassword);
 
             try
             {
@@ -298,21 +265,21 @@ namespace Cnp.Sdk
             stopWatch.Start();
             do
             {
-                if (printxml)
+                if (_config.Printxml)
                 {
                     Console.WriteLine("Elapsed time is " + stopWatch.Elapsed.TotalMilliseconds);
                 }
                 try
                 {
                     sftpAttrs = sftpClient.Get("outbound/" + fileName).Attributes;
-                    if (printxml)
+                    if (_config.Printxml)
                     {
                         Console.WriteLine("Attrs of file are: " + getSftpFileAttributes(sftpAttrs));
                     }
                 }
                 catch (SshConnectionException e)
                 {
-                    if (printxml)
+                    if (_config.Printxml)
                     {
                         Console.WriteLine(e.Message);
                     }
@@ -320,7 +287,7 @@ namespace Cnp.Sdk
                 }
                 catch (SftpPathNotFoundException e)
                 {
-                    if (printxml)
+                    if (_config.Printxml)
                     {
                         Console.WriteLine(e.Message);
                     }
@@ -336,12 +303,7 @@ namespace Cnp.Sdk
         {
             SftpClient sftpClient;
 
-            var printxml = _config["printxml"] == "true";
-            var url = _config["sftpUrl"];
-            var username = _config["sftpUsername"];
-            var password = _config["sftpPassword"];
-
-            sftpClient = new SftpClient(url, username, password);
+            sftpClient = new SftpClient(_config.SftpUrl, _config.SftpUsername, _config.SftpPassword);
 
             try
             {
@@ -353,7 +315,7 @@ namespace Cnp.Sdk
             }
 
             try {
-                if (printxml) {
+                if (_config.Printxml) {
                     Console.WriteLine("Picking up remote file outbound/" + fileName + ".asc");
                     Console.WriteLine("Putting it at " + destinationFilePath);
                 }
@@ -361,7 +323,7 @@ namespace Cnp.Sdk
                 FileStream downloadStream = new FileStream(destinationFilePath, FileMode.Create, FileAccess.ReadWrite);
                 sftpClient.DownloadFile("outbound/" + fileName + ".asc", downloadStream);
                 downloadStream.Close();
-                if (printxml) {
+                if (_config.Printxml) {
                     Console.WriteLine("Removing remote file output/" + fileName + ".asc");
                 }
 

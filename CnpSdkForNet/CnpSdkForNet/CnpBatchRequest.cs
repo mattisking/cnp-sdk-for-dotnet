@@ -1,4 +1,5 @@
-﻿using Cnp.Sdk.Core;
+﻿using Cnp.Sdk.Configuration;
+using Cnp.Sdk.Core;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,7 +13,7 @@ namespace Cnp.Sdk
         public string merchantId;
         public string reportGroup;
 
-        public Dictionary<string, string> config;
+        public CnpOnlineConfig config;
 
         public string batchFilePath;
         private string tempBatchFilePath;
@@ -109,7 +110,7 @@ namespace Cnp.Sdk
 
         public batchRequest()
         {
-            config = new Dictionary<string, string>();
+            config = new CnpOnlineConfig();
             ConfigManager configManager = new ConfigManager();
             config = configManager.getConfig();
             //config["url"] = Properties.Settings.Default.url;
@@ -130,7 +131,7 @@ namespace Cnp.Sdk
             initializeRequest();
         }
 
-        public batchRequest(Dictionary<string, string> config)
+        public batchRequest(CnpOnlineConfig config)
         {
             this.config = config;
 
@@ -139,8 +140,8 @@ namespace Cnp.Sdk
 
         private void initializeRequest()
         {
-            requestDirectory = Path.Combine(config["requestDirectory"],"Requests") + Path.DirectorySeparatorChar;
-            responseDirectory = Path.Combine(config["responseDirectory"],"Responses") + Path.DirectorySeparatorChar;
+            requestDirectory = Path.Combine(config.RequestDirectory,"Requests") + Path.DirectorySeparatorChar;
+            responseDirectory = Path.Combine(config.ResponseDirectory,"Responses") + Path.DirectorySeparatorChar;
 
             cnpFile = new cnpFile();
             cnpTime = new cnpTime();
@@ -1659,7 +1660,7 @@ namespace Cnp.Sdk
 
             xmlHeader += "merchantSdk=\"DotNet;" + CnpVersion.CurrentCNPSDKVersion + "\"\r\n";
 
-            xmlHeader += "merchantId=\"" + config["merchantId"] + "\">\r\n";
+            xmlHeader += "merchantId=\"" + config.MerchantId + "\">\r\n";
             return xmlHeader;
         }
 
@@ -1677,7 +1678,7 @@ namespace Cnp.Sdk
         {
             if (txn.reportGroup == null)
             {
-                txn.reportGroup = config["reportGroup"];
+                txn.reportGroup = config.ReportGroup;
             }
         }
 
@@ -1685,7 +1686,7 @@ namespace Cnp.Sdk
         {
             if (txn.reportGroup == null)
             {
-                txn.reportGroup = config["reportGroup"];
+                txn.reportGroup = config.ReportGroup;
             }
         }
 
@@ -1752,11 +1753,11 @@ namespace Cnp.Sdk
         private string requestDirectory;
         private string responseDirectory;
 
-        private Dictionary<string, string> config;
+        private CnpOnlineConfig config;
 
         public RFRRequest()
         {
-            config = new Dictionary<string, string>();
+            config = new CnpOnlineConfig();
             ConfigManager configManager = new ConfigManager();
             config = configManager.getConfig();
             //config["url"] = Properties.Settings.Default.url;
@@ -1777,11 +1778,11 @@ namespace Cnp.Sdk
             cnpTime = new cnpTime();
             cnpFile = new cnpFile();
 
-            requestDirectory = Path.Combine(config["requestDirectory"],"Requests") + Path.DirectorySeparatorChar;
-            responseDirectory = Path.Combine(config["responseDirectory"],"Responses") + Path.DirectorySeparatorChar;
+            requestDirectory = Path.Combine(config.RequestDirectory,"Requests") + Path.DirectorySeparatorChar;
+            responseDirectory = Path.Combine(config.ResponseDirectory,"Responses") + Path.DirectorySeparatorChar;
         }
 
-        public RFRRequest(Dictionary<string, string> config)
+        public RFRRequest(CnpOnlineConfig config)
         {
             this.config = config;
 
@@ -1790,8 +1791,8 @@ namespace Cnp.Sdk
 
         private void initializeRequest()
         {
-            requestDirectory = Path.Combine(config["requestDirectory"],"Requests") + Path.DirectorySeparatorChar;
-            responseDirectory = Path.Combine(config["responseDirectory"],"Responses") + Path.DirectorySeparatorChar;
+            requestDirectory = Path.Combine(config.RequestDirectory,"Requests") + Path.DirectorySeparatorChar;
+            responseDirectory = Path.Combine(config.ResponseDirectory,"Responses") + Path.DirectorySeparatorChar;
 
             cnpFile = new cnpFile();
             cnpTime = new cnpTime();
@@ -1807,7 +1808,7 @@ namespace Cnp.Sdk
             return responseDirectory;
         }
 
-        public void setConfig(Dictionary<string, string> config)
+        public void setConfig(CnpOnlineConfig config)
         {
             this.config = config;
         }

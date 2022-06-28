@@ -29,12 +29,7 @@ namespace SampleApp
                 builder.AddConsole();
             });
 
-            // build a base config and override with local config
-            var config = new ConfigManager().getConfig();
-            config["username"] = configuration.GetValue<string>("PaymentConfig:Username");
-            config["password"] = configuration.GetValue<string>("PaymentConfig:Password");
-            config["url"] = configuration.GetValue<string>("PaymentConfig:URL");
-            services.AddCnpSdk4Net(config);
+            services.AddCnpSdk4Net(configuration);
 
             // create service provider
             var serviceProvider = services.BuildServiceProvider();

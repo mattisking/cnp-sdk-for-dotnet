@@ -9,6 +9,7 @@ using System.Net;
 using Cnp.Sdk.Interfaces;
 using Microsoft.Extensions.Logging;
 using Cnp.Sdk.Core;
+using Cnp.Sdk.Configuration;
 
 namespace Cnp.Sdk
 {
@@ -17,7 +18,7 @@ namespace Cnp.Sdk
     public class CnpOnline : ICnpOnline
     {
         // Configuration object containing credentials and settings.
-        private Dictionary<string, string> _config;
+        private CnpOnlineConfig _config;
 
         // The object used for communicating with the server
         private readonly ICommunications _communications;
@@ -63,7 +64,7 @@ namespace Cnp.Sdk
             _communications = communications;
         }
 
-        public CnpOnline(ICommunications communications, Dictionary<string, string> config, ILogger logger)
+        public CnpOnline(ICommunications communications, CnpOnlineConfig config, ILogger logger)
         {
             _config = config;
             _logger = logger;
@@ -1081,10 +1082,10 @@ namespace Cnp.Sdk
         {
             var request = new cnpOnlineRequest();
             request.merchantSdk = "DotNet;" + CnpVersion.CurrentCNPSDKVersion;
-            request.merchantId = _merchantId ?? _config["merchantId"];
+            request.merchantId = _merchantId ?? _config.MerchantId;
             var authentication = new authentication();
-            authentication.password = _config["password"];
-            authentication.user = _config["username"];
+            authentication.password = _config.Password;
+            authentication.user = _config.Username;
             request.authentication = authentication;
             return request;
         }
@@ -1100,11 +1101,9 @@ namespace Cnp.Sdk
             try
             {
                 var cnpOnlineResponse = DeserializeObject(xmlResponse);
-                if (_config.ContainsKey("printxml") && Convert.ToBoolean(_config["printxml"]))
+                if (_config.Printxml)
                 {
-                    
                     Console.WriteLine(cnpOnlineResponse.response);
-                    
                 }
                 if (!"0".Equals(cnpOnlineResponse.response))
                 {
@@ -1188,7 +1187,7 @@ namespace Cnp.Sdk
         {
             if (txn.reportGroup == null)
             {
-                txn.reportGroup = _config["reportGroup"];
+                txn.reportGroup = _config.ReportGroup;
             }
         }
 
@@ -1196,7 +1195,7 @@ namespace Cnp.Sdk
         {
             if (txn.reportGroup == null)
             {
-                txn.reportGroup = _config["reportGroup"];
+                txn.reportGroup = _config.ReportGroup;
             }
         }
     }

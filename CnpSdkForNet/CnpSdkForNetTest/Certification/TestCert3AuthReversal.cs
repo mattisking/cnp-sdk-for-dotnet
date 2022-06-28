@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Net.Http;
+using Cnp.Sdk.Configuration;
 using Cnp.Sdk.Interfaces;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;
@@ -19,7 +20,7 @@ namespace Cnp.Sdk.Test.Certification
             EnvironmentVariableTestFlags.RequirePreliveOnlineTestsEnabled();
             
             var existingConfig = new ConfigManager().getConfig();
-            Dictionary<string, string> config = new Dictionary<string, string>();
+            CnpOnlineConfig config = new CnpOnlineConfig();
             config.Add("url", "https://payments.vantivprelive.com/vap/communicator/online");
             config.Add("reportGroup", "Default Report Group");
             config.Add("username", existingConfig["username"]);

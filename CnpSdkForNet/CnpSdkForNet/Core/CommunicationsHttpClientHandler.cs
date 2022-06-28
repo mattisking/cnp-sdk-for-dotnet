@@ -1,4 +1,6 @@
-﻿using Cnp.Sdk.Utlities;
+﻿using Cnp.Sdk.Configuration;
+using Cnp.Sdk.Utlities;
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
@@ -8,7 +10,7 @@ namespace Cnp.Sdk.Core
 {
     public class CommunicationsHttpClientHandler : HttpClientHandler
     {
-        public CommunicationsHttpClientHandler(Dictionary<string, string> config, X509Certificate2 clientCertificate = null)
+        public CommunicationsHttpClientHandler(CnpOnlineConfig config, X509Certificate2 clientCertificate = null)
         {
             if (clientCertificate != null)
             {
@@ -19,22 +21,16 @@ namespace Cnp.Sdk.Core
             SslProtocols = System.Security.Authentication.SslProtocols.Tls12;
 
             // Set the maximum connections for the client, if specified
-            if (Config.IsValidConfigValueSet("maxConnections", config))
+            if (config.MaxConnections > 0)
             {
-                int.TryParse(config["maxConnections"], out var maxConnections);
-                if (maxConnections > 0)
-                {
-                    MaxConnectionsPerServer = maxConnections;
-                }
+                MaxConnectionsPerServer = config.MaxConnections;
             }
 
             // Configure the client to use the proxy, if specified
-            if (Config.IsValidConfigValueSet("proxyHost", config) &&
-                Config.IsValidConfigValueSet("proxyPort", config))
+            if (String.IsNullOrEmpty(config.ProxyHost) == false &&
+                config.ProxyPort != 0)
             {
-                Proxy = new WebProxy(config["proxyHost"], int.Parse(config["" +
-                    "proxyPort" +
-                    ""]))
+                Proxy = new WebProxy(config.ProxyHost, config.ProxyPort)
                 {
                     BypassProxyOnLocal = true
                 };
