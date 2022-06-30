@@ -12,13 +12,13 @@ namespace Cnp.Sdk.Test.Unit
     class TestCredit
     {
         private CnpOnline _cnp;
-        private Mock<ILogger> _mockLogger;
+        private Mock<ILogger<CnpOnline>> _mockLogger;
         private Mock<ICommunications> _mockCommunications;
 
         [OneTimeSetUp]
         public void SetUpCnp()
         {
-            _mockLogger = new Mock<ILogger>();
+            _mockLogger = new Mock<ILogger<CnpOnline>>();
             _mockCommunications = new Mock<ICommunications>();
 
             _cnp = new CnpOnline(_mockCommunications.Object, _mockLogger.Object);

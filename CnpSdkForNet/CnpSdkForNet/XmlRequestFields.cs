@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Security;
 using System.Xml.Serialization;
+using Cnp.Sdk.Configuration;
 
 namespace Cnp.Sdk
 {
@@ -5570,9 +5571,9 @@ namespace Cnp.Sdk
         {
             merchantId = Properties.Settings.Default.merchantId;
         }
-        public accountUpdateFileRequestData(Dictionary<string, string> config)
+        public accountUpdateFileRequestData(CnpOnlineConfig config)
         {
-            merchantId = config["merchantId"];
+            merchantId = config.MerchantId;
         }
         public DateTime postDay; //yyyy-MM-dd
 

@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Cnp.Sdk.Interfaces;
 using Cnp.Sdk.Core;
+using Cnp.Sdk.Configuration;
 
 namespace Cnp.Sdk.Test.Unit
 {
@@ -44,11 +45,12 @@ namespace Cnp.Sdk.Test.Unit
         [Test]
         public void TestBatchRequestContainsMerchantSdkAttribute()
         {
-            var mockConfig = new Dictionary<string, string>();
-
-            mockConfig["merchantId"] = "01234";
-            mockConfig["requestDirectory"] = "C:\\MockRequests";
-            mockConfig["responseDirectory"] = "C:\\MockResponses";
+            var mockConfig = new CnpOnlineConfig()
+            {
+                MerchantId = "01234",
+                RequestDirectory = "C:\\MockRequests",
+                ResponseDirectory = "C:\\MockResponses"
+            };
 
             batchRequest = new batchRequest(mockConfig);
 
@@ -65,24 +67,24 @@ merchantId=""01234"">
         [Test]
         public void TestInitialization()
         {
-            var mockConfig = new Dictionary<string, string>();
-
-            mockConfig["url"] = "https://www.mockurl.com";
-            mockConfig["reportGroup"] = "Mock Report Group";
-            mockConfig["username"] = "mockUser";
-            mockConfig["printxml"] = "false";
-            mockConfig["timeout"] = "35";
-            mockConfig["proxyHost"] = "www.mockproxy.com";
-            mockConfig["merchantId"] = "MOCKID";
-            mockConfig["password"] = "mockPassword";
-            mockConfig["proxyPort"] = "3000";
-            mockConfig["sftpUrl"] = "www.mockftp.com";
-            mockConfig["sftpUsername"] = "mockFtpUser";
-            mockConfig["sftpPassword"] = "mockFtpPassword";
-            mockConfig["onlineBatchUrl"] = "www.mockbatch.com";
-            mockConfig["onlineBatchPort"] = "4000";
-            mockConfig["requestDirectory"] = Path.Combine(Path.GetTempPath(),"MockRequests");
-            mockConfig["responseDirectory"] = Path.Combine(Path.GetTempPath(),"MockResponses");
+            var mockConfig = new CnpOnlineConfig() 
+            {
+                Url = "https://www.mockurl.com",
+                ReportGroup = "Mock Report Group",
+                Username = "mockUser",
+                Timeout = 35,
+                ProxyHost = "www.mockproxy.com",
+                MerchantId = "MOCKID",
+                Password = "mockPassword",
+                ProxyPort = 3000,
+                SftpUrl = "www.mockftp.com",
+                SftpUsername = "mockFtpUser",
+                SftpPassword = "mockFtpPassword",
+                OnlineBatchUrl = "www.mockbatch.com",
+                OnlineBatchPort = 4000,
+                RequestDirectory = Path.Combine(Path.GetTempPath(), "MockRequests"),
+                ResponseDirectory = Path.Combine(Path.GetTempPath(), "MockResponses")
+            };
 
             batchRequest = new batchRequest(mockConfig);
             Assert.AreEqual(Path.Combine(Path.GetTempPath(),"MockRequests","Requests") + Path.DirectorySeparatorChar, batchRequest.getRequestDirectory());

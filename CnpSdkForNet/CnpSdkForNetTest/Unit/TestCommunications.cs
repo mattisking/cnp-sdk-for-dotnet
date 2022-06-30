@@ -1,7 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Net.Http;
+using Cnp.Sdk.Configuration;
 using Cnp.Sdk.Core;
 using Cnp.Sdk.Interfaces;
+using Microsoft.Extensions.Logging;
+using Moq;
 using NUnit.Framework;
 
 namespace Cnp.Sdk.Test.Unit
@@ -9,16 +12,18 @@ namespace Cnp.Sdk.Test.Unit
     [TestFixture]
     internal class TestCommunications
     {
-        private Dictionary<string, string> config;
+        private CnpOnlineConfig config;
         private ICommunications objectUnderTest;
+        private Mock<ILogger<Communications>> _mockComLogger;
 
         [OneTimeSetUp]
         public void SetUpCnp()
         {
-            config = new Dictionary<string, string> {["url"] = "https://example.com"};
+            config = new CnpOnlineConfig() { Url = "https://example.com" };
+            _mockComLogger = new Mock<ILogger<Communications>>();
 
             var handler = new CommunicationsHttpClientHandler(config);
-            objectUnderTest = new Communications(new HttpClient(handler), config);
+            objectUnderTest = new Communications(new HttpClient(handler), _mockComLogger.Object, config);
         }
 
         //[Test]
@@ -57,7 +62,7 @@ namespace Cnp.Sdk.Test.Unit
         public void TestNeuterUserCredentialsActuallyNeuters()
         {
             string inputXml = "<test><user>abc</user><password>123</password></test>";
-            config["neuterUserCredentials"] = "true";
+            config.NeuterUserCredentials = true;
 
             objectUnderTest.NeuterUserCredentials(ref inputXml);
 
@@ -69,7 +74,7 @@ namespace Cnp.Sdk.Test.Unit
         public void TestNeuterUserCredentialsDoesNotNeuter()
         {
             string inputXml = "<test><user>abc</user><password>123</password></test>";
-            config["neuterUserCredentials"] = "false";
+            config.NeuterUserCredentials = false;
 
             objectUnderTest.NeuterUserCredentials(ref inputXml);
 

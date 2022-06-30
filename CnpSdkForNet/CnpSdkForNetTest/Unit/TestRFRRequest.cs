@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using NUnit.Framework;
 using Moq;
+using Cnp.Sdk.Configuration;
 
 namespace Cnp.Sdk.Test.Unit
 {
@@ -39,24 +40,24 @@ namespace Cnp.Sdk.Test.Unit
         [Test]
         public void TestInitialization()
         {
-            Dictionary<String, String> mockConfig = new Dictionary<string, string>();
-
-            mockConfig["url"] = "https://www.mockurl.com";
-            mockConfig["reportGroup"] = "Mock Report Group";
-            mockConfig["username"] = "mockUser";
-            mockConfig["printxml"] = "false";
-            mockConfig["timeout"] = "35";
-            mockConfig["proxyHost"] = "www.mockproxy.com";
-            mockConfig["merchantId"] = "MOCKID";
-            mockConfig["password"] = "mockPassword";
-            mockConfig["proxyPort"] = "3000";
-            mockConfig["sftpUrl"] = "www.mockftp.com";
-            mockConfig["sftpUsername"] = "mockFtpUser";
-            mockConfig["sftpPassword"] = "mockFtpPassword";
-            mockConfig["onlineBatchUrl"] = "www.mockbatch.com";
-            mockConfig["onlineBatchPort"] = "4000";
-            mockConfig["requestDirectory"] = Path.Combine(Path.GetTempPath(),"MockRequests");;
-            mockConfig["responseDirectory"] = Path.Combine(Path.GetTempPath(),"MockResponses");;
+            CnpOnlineConfig mockConfig = new CnpOnlineConfig()
+            {
+                Url = "https://www.mockurl.com",
+                ReportGroup = "Mock Report Group",
+                Username = "mockUser",
+                Timeout = 35,
+                ProxyHost = "www.mockproxy.com",
+                MerchantId = "MOCKID",
+                Password = "mockPassword",
+                ProxyPort = 3000,
+                SftpUrl = "www.mockftp.com",
+                SftpUsername = "mockFtpUser",
+                SftpPassword = "mockFtpPassword",
+                OnlineBatchUrl = "www.mockbatch.com",
+                OnlineBatchPort = 4000,
+                RequestDirectory = Path.Combine(Path.GetTempPath(), "MockRequests"),
+                ResponseDirectory = Path.Combine(Path.GetTempPath(), "MockResponses")
+            };
 
             rfrRequest = new RFRRequest(mockConfig);
 
@@ -87,30 +88,30 @@ namespace Cnp.Sdk.Test.Unit
         [Test]
         public void TestAccountUpdateFileRequestData() 
         {
-            Dictionary<String, String> mockConfig = new Dictionary<string, string>();
-
-            mockConfig["url"] = "https://www.mockurl.com";
-            mockConfig["reportGroup"] = "Mock Report Group";
-            mockConfig["username"] = "mockUser";
-            mockConfig["printxml"] = "false";
-            mockConfig["timeout"] = "35";
-            mockConfig["proxyHost"] = "www.mockproxy.com";
-            mockConfig["merchantId"] = "MOCKID";
-            mockConfig["password"] = "mockPassword";
-            mockConfig["proxyPort"] = "3000";
-            mockConfig["sftpUrl"] = "www.mockftp.com";
-            mockConfig["sftpUsername"] = "mockFtpUser";
-            mockConfig["sftpPassword"] = "mockFtpPassword";
-            mockConfig["onlineBatchUrl"] = "www.mockbatch.com";
-            mockConfig["onlineBatchPort"] = "4000";
-            mockConfig["requestDirectory"] = "C:\\MockRequests";
-            mockConfig["responseDirectory"] = "C:\\MockResponses";
+            CnpOnlineConfig mockConfig = new CnpOnlineConfig()
+            {
+                Url = "https://www.mockurl.com",
+                ReportGroup = "Mock Report Group",
+                Username = "mockUser",
+                Timeout = 35,
+                ProxyHost = "www.mockproxy.com",
+                MerchantId = "MOCKID",
+                Password = "mockPassword",
+                ProxyPort = 3000,
+                SftpUrl = "www.mockftp.com",
+                SftpUsername = "mockFtpUser",
+                SftpPassword = "mockFtpPassword",
+                OnlineBatchUrl = "www.mockbatch.com",
+                OnlineBatchPort = 4000,
+                RequestDirectory = "C:\\MockRequests",
+                ResponseDirectory = "C:\\MockResponses"
+            };
 
             accountUpdateFileRequestData accountUpdateFileRequest = new accountUpdateFileRequestData(mockConfig);
             accountUpdateFileRequestData accountUpdateFileRequestDefault = new accountUpdateFileRequestData();
 
             Assert.AreEqual(accountUpdateFileRequestDefault.merchantId, Properties.Settings.Default.merchantId);
-            Assert.AreEqual(accountUpdateFileRequest.merchantId, mockConfig["merchantId"]);
+            Assert.AreEqual(accountUpdateFileRequest.merchantId, mockConfig.MerchantId);
         }
     }
 }
