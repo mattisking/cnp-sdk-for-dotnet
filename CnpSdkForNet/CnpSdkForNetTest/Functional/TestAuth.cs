@@ -7,6 +7,7 @@ using Moq;
 using Cnp.Sdk.Interfaces;
 using Cnp.Sdk.Core;
 using System.Net.Http;
+using Cnp.Sdk.Configuration;
 
 namespace Cnp.Sdk.Test.Functional
 {
@@ -14,18 +15,20 @@ namespace Cnp.Sdk.Test.Functional
     internal class TestAuth
     {
         private CnpOnline _cnp;
-        private Mock<ILogger> _mockLogger;
+        private Mock<ILogger<CnpOnline>> _mockLogger;
+        private Mock<ILogger<Communications>> _mockComLogger;
         private ICommunications _communications;
-        private Dictionary<string, string> _config;
+        private CnpOnlineConfig _config;
 
         [OneTimeSetUp]
         public void SetUpCnp()
         {
-            _mockLogger = new Mock<ILogger>();
+            _mockLogger = new Mock<ILogger<CnpOnline>>();
+            _mockComLogger = new Mock<ILogger<Communications>>();
             _config = new ConfigManager().getConfig();
 
             var handler = new CommunicationsHttpClientHandler(_config);
-            _communications = new Communications(new HttpClient(handler), _config);
+            _communications = new Communications(new HttpClient(handler), _mockComLogger.Object, _config);
 
             _cnp = new CnpOnline(_communications, _config, _mockLogger.Object);
         }
@@ -415,34 +418,8 @@ namespace Cnp.Sdk.Test.Functional
         }
 
         [Test]
-        public void TestNotHavingTheLogFileSettingShouldDefaultItsValueToNull()
-        {
-            _config.Remove("logFile");
-
-            var authorization = new authorization
-            {
-                id = "1",
-                reportGroup = "Planets",
-                orderId = "15",
-                amount = 106,
-                orderSource = orderSourceType.ecommerce,
-                card = new cardType
-                {
-                    type = methodOfPaymentTypeEnum.VI,
-                    number = "414100000000000000",
-                    expDate = "1210"
-                }
-            };
-
-            var response = _cnp.Authorize(authorization);
-            Assert.AreEqual("000", response.response);
-        }
-
-        [Test]
         public void TestNeuterAccountNumsShouldDefaultToFalse()
         {
-            _config.Remove("neuterAccountNums");
-
             var authorization = new authorization
             {
                 id = "1",
@@ -460,33 +437,6 @@ namespace Cnp.Sdk.Test.Functional
 
             var response = _cnp.Authorize(authorization);
             Assert.AreEqual("000", response.response);
-        }
-
-        [Test]
-        public void TestPrintxmlShouldDefaultToFalse()
-        {
-            _config.Remove("printxml");
-
-            var authorization = new authorization
-            {
-                id = "1",
-                reportGroup = "Planets",
-                orderId = "17",
-                amount = 106,
-                orderSource = orderSourceType.ecommerce,
-                card = new cardType
-                {
-                    type = methodOfPaymentTypeEnum.VI,
-                    number = "414100000000000000",
-                    expDate = "1210"
-                }
-            };
-
-            var response = _cnp.Authorize(authorization);
-            Assert.AreEqual("000", response.response);
-            Assert.AreEqual("Approved", response.message);
-            // SANDBOX BRB
-            //Assert.AreEqual("63225578415568556365452427825", response.networkTransactionId);
         }
 
         [Test]

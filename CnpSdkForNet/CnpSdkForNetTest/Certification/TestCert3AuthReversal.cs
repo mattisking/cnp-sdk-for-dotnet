@@ -12,6 +12,7 @@ namespace Cnp.Sdk.Test.Certification
     {
         private CnpOnline cnp;
         private ILogger<CnpOnline> _logger;
+        private ILogger<Communications> _comlogger;
         private ICommunications _communications;
 
         [OneTimeSetUp]
@@ -21,20 +22,17 @@ namespace Cnp.Sdk.Test.Certification
             
             var existingConfig = new ConfigManager().getConfig();
             CnpOnlineConfig config = new CnpOnlineConfig();
-            config.Add("url", "https://payments.vantivprelive.com/vap/communicator/online");
-            config.Add("reportGroup", "Default Report Group");
-            config.Add("username", existingConfig["username"]);
-            config.Add("timeout", "20000");
-            config.Add("merchantId", existingConfig["merchantId"]);
-            config.Add("password",existingConfig["password"]);
-            config.Add("printxml", "true");
-            config.Add("logFile", null);
-            config.Add("neuterAccountNums", null);
-            config.Add("proxyHost", "");
-            config.Add("proxyPort", "");
-            
+            config.Url = "https://payments.vantivprelive.com/vap/communicator/online";
+            config.ReportGroup = "Default Report Group";
+            config.Username = existingConfig.Username;
+            config.Timeout = 20000;
+            config.MerchantId = existingConfig.MerchantId;
+            config.Password = existingConfig.Password;
+            config.NeuterAccountNums = false;
+            config.ProxyHost = string.Empty;
+            config.ProxyPort = 0;
             ConfigManager configManager = new ConfigManager(config);
-            _communications = new Communications(new HttpClient(), configManager.getConfig());
+            _communications = new Communications(new HttpClient(), _comlogger, configManager.getConfig());
 
             _logger = LoggerFactory.Create(config =>
             {

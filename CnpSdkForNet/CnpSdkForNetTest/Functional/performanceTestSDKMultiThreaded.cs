@@ -6,6 +6,7 @@ using NUnit.Framework;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Cnp.Sdk.Interfaces;
+using Cnp.Sdk.Configuration;
 
 namespace Cnp.Sdk.Test.Functional
 {
@@ -70,7 +71,7 @@ namespace Cnp.Sdk.Test.Functional
 
         class PerformanceTest
         {
-            private Mock<ILogger> _mockLogger;
+            private Mock<ILogger<CnpOnline>> _mockLogger;
             private Mock<ICommunications> _mockCommunications;
 
             CnpOnline cnp;
@@ -83,19 +84,18 @@ namespace Cnp.Sdk.Test.Functional
                 threadId = idNumber;
                 CnpOnlineConfig config = new CnpOnlineConfig();
 
-                _mockLogger = new Mock<ILogger>();
+                _mockLogger = new Mock<ILogger<CnpOnline>>();
                 _mockCommunications = new Mock<ICommunications>();
 
                 try
                 {
-                    config = new Dictionary<string, string>
+                    config = new CnpOnlineConfig()
                     {
-                        {"proxyHost","websenseproxy"},
-                        {"proxyPort","8080"},
-                        {"printxml", "false"},
-                        {"merchantId", "101" },
-                        {"username", "DOTNET"},
-                        {"password", "TESTCASE"}
+                        ProxyHost = "websenseproxy",
+                        ProxyPort = 8080,
+                        MerchantId = "101",
+                        Username = "DOTNET",
+                        Password = "TESTCASE"
                     };
                     cnp = new CnpOnline(_mockCommunications.Object, config, _mockLogger.Object);
                 }

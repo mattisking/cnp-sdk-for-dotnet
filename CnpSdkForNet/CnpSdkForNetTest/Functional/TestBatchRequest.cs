@@ -22,9 +22,11 @@ namespace Cnp.Sdk.Test.Functional
             var configManager = new ConfigManager();
             var config = configManager.getConfig();
             var handler = new CommunicationsHttpClientHandler(config);
-            _communications = new Communications(new HttpClient(handler), config);
+            var mockLogger = new Mock<ILogger<cnpRequest>>();
+            var mockComLogger = new Mock<ILogger<Communications>>();
+            _communications = new Communications(new HttpClient(handler), mockComLogger.Object, config);
 
-            _cnp = new cnpRequest(_communications, config);
+            _cnp = new cnpRequest(_communications, config, mockLogger.Object);
         }
 
         [Test]

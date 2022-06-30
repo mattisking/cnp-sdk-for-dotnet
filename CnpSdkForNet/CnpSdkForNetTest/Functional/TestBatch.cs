@@ -6,6 +6,8 @@ using Moq;
 using Cnp.Sdk.Interfaces;
 using Cnp.Sdk.Core;
 using System.Net.Http;
+using Cnp.Sdk.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Cnp.Sdk.Test.Functional
 {
@@ -13,43 +15,48 @@ namespace Cnp.Sdk.Test.Functional
     class TestBatch
     {
         private cnpRequest _cnp;
+        private Mock<ILogger<cnpRequest>> _mockLogger;
+        private Mock<ILogger<Communications>> _mockComLogger;
         private ICommunications _communications;
-        private Dictionary<string, string> _invalidConfig;
-        private Dictionary<string, string> _invalidSftpConfig;
+        private CnpOnlineConfig _invalidConfig;
+        private CnpOnlineConfig _invalidSftpConfig;
         private static readonly string tempDirectroyPath = Path.Combine(Path.GetTempPath(),"NET" + CnpVersion.CurrentCNPXMLVersion) + Path.DirectorySeparatorChar;
 
         [OneTimeSetUp]
         public void SetUp()
         {
             EnvironmentVariableTestFlags.RequirePreliveBatchTestsEnabled();
+
+            _mockLogger = new Mock<ILogger<cnpRequest>>();
+            _mockComLogger = new Mock<ILogger<Communications>>();
             
             ConfigManager invalidConfigManager = new ConfigManager();
             _invalidConfig = invalidConfigManager.getConfig();
-            _invalidConfig["username"] = "badUsername";
-            _invalidConfig["password"] = "badPassword";
-            _invalidConfig["requestDirectory"] = tempDirectroyPath + "BatchRequests";
-            _invalidConfig["responseDirectory"] = tempDirectroyPath + "BatchResponses";
-            _invalidConfig["useEncryption"] = "false";
+            _invalidConfig.Username = "badUsername";
+            _invalidConfig.Password = "badPassword";
+            _invalidConfig.RequestDirectory = tempDirectroyPath + "BatchRequests";
+            _invalidConfig.ResponseDirectory = tempDirectroyPath + "BatchResponses";
+            _invalidConfig.UseEncryption = false;
 
             _invalidSftpConfig = invalidConfigManager.getConfig();
-            _invalidSftpConfig["sftpUsername"] = "badSftpUsername";
-            _invalidSftpConfig["sftpPassword"] = "badSftpPassword";
-            _invalidSftpConfig["requestDirectory"] = tempDirectroyPath + "BatchRequests";
-            _invalidSftpConfig["responseDirectory"] = tempDirectroyPath + "BatchResponses";
-            _invalidSftpConfig["useEncryption"] = "false";
+            _invalidSftpConfig.SftpUsername = "badSftpUsername";
+            _invalidSftpConfig.SftpPassword = "badSftpPassword";
+            _invalidSftpConfig.RequestDirectory = tempDirectroyPath + "BatchRequests";
+            _invalidSftpConfig.ResponseDirectory = tempDirectroyPath + "BatchResponses";
+            _invalidSftpConfig.UseEncryption = false;
         }
 
         [SetUp]
         public void SetUpBeforeTest()
         {
-            Dictionary<String,String> config = new ConfigManager().getConfig();
-            config["requestDirectory"] = tempDirectroyPath + "BatchRequests";
-            config["responseDirectory"] = tempDirectroyPath + "BatchResponses";
+            CnpOnlineConfig config = new ConfigManager().getConfig();
+            config.RequestDirectory = tempDirectroyPath + "BatchRequests";
+            config.ResponseDirectory = tempDirectroyPath + "BatchResponses";
 
             var handler = new CommunicationsHttpClientHandler(config);
-            _communications = new Communications(new HttpClient(handler), config);
+            _communications = new Communications(new HttpClient(handler), _mockComLogger.Object, config);
 
-            _cnp = new cnpRequest(_communications, config);
+            _cnp = new cnpRequest(_communications, config, _mockLogger.Object);
         }
 
         [Test]
@@ -688,7 +695,7 @@ namespace Cnp.Sdk.Test.Functional
                 cnpBatchResponse = cnpResponse.nextBatchResponse();
             }
 
-            var cnpRfr = new cnpRequest(_communications);
+            var cnpRfr = new cnpRequest(_communications, _mockLogger.Object);
             var rfrRequest = new RFRRequest();
             var accountUpdateFileRequestData = new accountUpdateFileRequestData();
             accountUpdateFileRequestData.merchantId = Properties.Settings.Default.merchantId;
@@ -949,7 +956,7 @@ namespace Cnp.Sdk.Test.Functional
         [Test]
         public void InvalidCredientialsBatch()
         {
-            var cnpIC = new cnpRequest(_communications, _invalidConfig);
+            var cnpIC = new cnpRequest(_communications, _invalidConfig, _mockLogger.Object);
 
             var cnpBatchRequest = new batchRequest();
 
@@ -1242,7 +1249,7 @@ namespace Cnp.Sdk.Test.Functional
         [Test]
         public void InvalidSftpCredientialsBatch()
         {
-            var cnpIsc = new cnpRequest(_communications, _invalidSftpConfig);
+            var cnpIsc = new cnpRequest(_communications, _invalidSftpConfig, _mockLogger.Object);
 
             var cnpBatchRequest = new batchRequest();
 

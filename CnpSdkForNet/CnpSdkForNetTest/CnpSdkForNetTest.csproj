@@ -8,6 +8,37 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <Compile Remove="Unit\TestAdvancedFraudCheck.cs" />
+      <Compile Remove="Unit\TestAuthorization.cs" />
+      <Compile Remove="Unit\TestAuthReversal.cs" />
+      <Compile Remove="Unit\TestBatch.cs" />
+      <Compile Remove="Unit\TestBatchRequest.cs" />
+      <Compile Remove="Unit\TestCancelSubscription.cs" />
+      <Compile Remove="Unit\TestCapture.cs" />
+      <Compile Remove="Unit\TestCaptureGivenAuth.cs" />
+      <Compile Remove="Unit\TestCnpOnline.cs" />
+      <Compile Remove="Unit\TestCommunications.cs" />
+      <Compile Remove="Unit\TestCredit.cs" />
+      <Compile Remove="Unit\TestDepositTransactionReversal.cs" />
+      <Compile Remove="Unit\TestEcheckRedeposit.cs" />
+      <Compile Remove="Unit\TestEcheckVerification.cs" />
+      <Compile Remove="Unit\TestEcheckVoid.cs" />
+      <Compile Remove="Unit\TestForceCapture.cs" />
+      <Compile Remove="Unit\TestGiftCard.cs" />
+      <Compile Remove="Unit\TestGiftCardParentReversal.cs" />
+      <Compile Remove="Unit\TestQueryTransactionRequest.cs" />
+      <Compile Remove="Unit\TestRefundTransactionReversal.cs" />
+      <Compile Remove="Unit\TestRegisterTokenRequest.cs" />
+      <Compile Remove="Unit\TestRFRRequest.cs" />
+      <Compile Remove="Unit\TestSale.cs" />
+      <Compile Remove="Unit\TestUpdateCardValidationNumOnToken.cs" />
+      <Compile Remove="Unit\TestUpdateSubscription.cs" />
+      <Compile Remove="Unit\TestVoid.cs" />
+      <Compile Remove="Unit\TestXmlFieldsSerializer.cs" />
+      <Compile Remove="Unit\TestXmlFieldsUnserializer.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
       <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="3.1.26" />
       <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.4.0" />
       <PackageReference Include="Moq" Version="4.13.1" />
@@ -17,6 +48,11 @@
 
     <ItemGroup>
       <ProjectReference Include="..\CnpSdkForNet\CnpSdkForNet.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Properties\" />
+      <Folder Include="Unit\" />
     </ItemGroup>
 
     <Target Name="CopyCustomContent" AfterTargets="AfterBuild">
